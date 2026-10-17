@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -73,6 +74,47 @@ func (s *GatewayServer) OnCallStarted(callID, patientID string, sink *ingress.Tw
 	return onPCMChunk, cleanup, nil
 }
 
+func (s *GatewayServer) SimulateAgentSpeech(callID string) error {
+	s.mu.RLock()
+	var cs *session.CallSession
+	if callID != "" {
+		cs = s.sessions[callID]
+	}
+	if cs == nil {
+		for _, sess := range s.sessions {
+			cs = sess
+			break
+		}
+	}
+	s.mu.RUnlock()
+
+	if cs == nil {
+		return fmt.Errorf("no active call session found")
+	}
+
+	chunks := ingress.GenerateSynthesizedVoicePCM(3000)
+	turnID := fmt.Sprintf("agent-turn-%d", time.Now().UnixMilli())
+
+	go func() {
+		for _, chunk := range chunks {
+			cs.EnqueueTTSAudio(chunk, turnID)
+			time.Sleep(10 * time.Millisecond)
+		}
+	}()
+
+	return nil
+}
+
+func (s *GatewayServer) GetActiveSessions() []string {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	list := make([]string, 0, len(s.sessions))
+	for id := range s.sessions {
+		list = append(list, id)
+	}
+	return list
+}
+
 func main() {
 	port := os.Getenv("PORT")
 	if port == "" {
@@ -84,8 +126,13 @@ func main() {
 
 	server := NewGatewayServer()
 	webrtcHandler := ingress.NewWebRTCHandler()
+	consoleServer := ingress.NewConsoleServer(server.GetActiveSessions, server.SimulateAgentSpeech)
 
 	mux := http.NewServeMux()
+
+	// Browser test console and simulation
+	mux.HandleFunc("/", consoleServer.Handler())
+	mux.HandleFunc("/api/simulate-agent", consoleServer.SimulateAgentHandler())
 
 	// Ingress endpoints
 	mux.HandleFunc("/ws/twilio", ingress.TwilioWebSocketHandler(server))
@@ -112,9 +159,10 @@ func main() {
 		log.Printf("==================================================")
 		log.Printf(" PulseMux Go Media Gateway (pulse-gateway)")
 		log.Printf(" Listening on port :%s", port)
-		log.Printf(" Telephony WS:   http://localhost:%s/ws/twilio", port)
-		log.Printf(" WebRTC SDP:     http://localhost:%s/webrtc/sdp", port)
-		log.Printf(" Health Check:   http://localhost:%s/healthz", port)
+		log.Printf(" Telephony WS:     http://localhost:%s/ws/twilio", port)
+		log.Printf(" WebRTC SDP:       http://localhost:%s/webrtc/sdp", port)
+		log.Printf(" Browser Console:  http://localhost:%s/", port)
+		log.Printf(" Health Check:     http://localhost:%s/healthz", port)
 		log.Printf("==================================================")
 		if err := httpServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			log.Fatalf("Gateway server failed: %v", err)
