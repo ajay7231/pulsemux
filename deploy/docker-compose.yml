@@ -1,0 +1,81 @@
+version: '3.8'
+
+services:
+  gateway-go:
+    build:
+      context: ../gateway-go
+      dockerfile: Dockerfile
+    container_name: pulsemux-gateway
+    ports:
+      - "8080:8080"
+    environment:
+      - PORT=8080
+      - WORKER_ADDR=worker-py:50051
+    depends_on:
+      - worker-py
+    networks:
+      - pulsemux-net
+
+  worker-py:
+    build:
+      context: ../worker-py
+      dockerfile: Dockerfile
+    container_name: pulsemux-worker
+    ports:
+      - "50051:50051"
+    environment:
+      - PORT=50051
+      - REDIS_URL=redis://redis:6379/0
+      - DEEPGRAM_API_KEY=${DEEPGRAM_API_KEY:-}
+      - CARTESIA_API_KEY=${CARTESIA_API_KEY:-}
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+    depends_on:
+      - redis
+    networks:
+      - pulsemux-net
+
+  redis:
+    image: redis:7-alpine
+    container_name: pulsemux-redis
+    ports:
+      - "6379:6379"
+    networks:
+      - pulsemux-net
+
+  prometheus:
+    image: prom/prometheus:v2.54.1
+    container_name: pulsemux-prometheus
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    ports:
+      - "9090:9090"
+    networks:
+      - pulsemux-net
+
+  jaeger:
+    image: jaegertracing/all-in-one:1.60
+    container_name: pulsemux-jaeger
+    ports:
+      - "16686:16686"
+      - "4317:4317"
+      - "4318:4318"
+    networks:
+      - pulsemux-net
+
+  grafana:
+    image: grafana/grafana:11.2.0
+    container_name: pulsemux-grafana
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    volumes:
+      - ./grafana-dashboard.json:/var/lib/grafana/dashboards/pulsemux.json:ro
+    depends_on:
+      - prometheus
+    networks:
+      - pulsemux-net
+
+networks:
+  pulsemux-net:
+    driver: bridge

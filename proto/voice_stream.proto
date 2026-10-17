@@ -1,0 +1,81 @@
+syntax = "proto3";
+package pulsemux.v1;
+
+option go_package = "github.com/ajay7231/pulsemux/gateway-go/gen/pulsemux/v1;pulsemuxv1";
+
+service VoiceOrchestrator {
+  // Single persistent bi-directional stream per active call
+  rpc StreamCall(stream GatewayEvent) returns (stream WorkerEvent);
+}
+
+message GatewayEvent {
+  string call_id = 1;
+  int64 timestamp_unix_ms = 2;
+
+  oneof payload {
+    CallInit init = 3;
+    AudioFrame audio = 4;
+    VadEvent vad = 5;
+    InterruptSignal interrupt = 6;
+    PlaybackAck playback_ack = 7;
+  }
+}
+
+message WorkerEvent {
+  string call_id = 1;
+  int64 timestamp_unix_ms = 2;
+
+  oneof payload {
+    AudioFrame tts_audio = 3;
+    TranscriptDelta transcript = 4;
+    AgentStateUpdate state_update = 5;
+    CallTerminate terminate = 6;
+  }
+}
+
+message CallInit {
+  string patient_id = 1;
+  uint32 sample_rate = 2; // Standardized to 16000
+  map<string, string> metadata = 3;
+}
+
+message AudioFrame {
+  bytes pcm_data = 1;      // 16-bit Linear PCM (e.g. 640 bytes for 20ms @ 16kHz mono)
+  uint32 sequence_num = 2;
+  string turn_id = 3;      // Tagged turn identifier to invalidate stale frames after barge-in
+}
+
+message VadEvent {
+  enum State {
+    SPEECH_START = 0;
+    SPEECH_END = 1;
+  }
+  State state = 1;
+  float confidence = 2;
+}
+
+message InterruptSignal {
+  string interrupted_turn_id = 1;
+  uint32 played_duration_ms = 2; // Exact ms of TTS audio the patient actually heard
+}
+
+message PlaybackAck {
+  string turn_id = 1;
+  uint32 total_played_ms = 2;
+}
+
+message TranscriptDelta {
+  string text = 1;
+  bool is_final = 2;
+  string speaker = 3; // "PATIENT" or "AGENT"
+  string turn_id = 4;
+}
+
+message AgentStateUpdate {
+  string current_node = 1; // e.g., "TRIAGE_SYMPTOMS", "RED_FLAG_CHECK", "BOOKING_SLOT"
+  uint32 ttft_ms = 2;      // Telemetry: LLM Time-To-First-Token
+}
+
+message CallTerminate {
+  string reason = 1;
+}

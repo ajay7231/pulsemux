@@ -1,0 +1,147 @@
+import logging
+from typing import Annotated, Any, Dict, List, Optional, TypedDict
+from pydantic import BaseModel, Field
+
+from app.agent.tools import (
+    check_red_flag_symptoms,
+    find_available_slots,
+    book_appointment_slot,
+    lookup_patient_record,
+)
+
+logger = logging.getLogger(__name__)
+
+
+class ClinicalState(TypedDict):
+    """Conversation and triage state container for LangGraph."""
+    call_id: str
+    patient_id: str
+    messages: List[Dict[str, str]]
+    current_node: str
+    symptoms: str
+    is_emergency: bool
+    recommended_slot: Optional[Dict[str, str]]
+    confirmation_code: Optional[str]
+
+
+def triage_symptoms_node(state: ClinicalState) -> Dict[str, Any]:
+    """Node 1: Extract and verify patient reported symptoms."""
+    logger.info(f"LangGraph [TRIAGE_SYMPTOMS] Call={state['call_id']}")
+    latest_msg = state["messages"][-1]["content"] if state["messages"] else ""
+    symptoms = state.get("symptoms", "") + " " + latest_msg
+
+    return {
+        "current_node": "TRIAGE_SYMPTOMS",
+        "symptoms": symptoms.strip(),
+    }
+
+
+def red_flag_check_node(state: ClinicalState) -> Dict[str, Any]:
+    """Node 2: Evaluate clinical urgency against red-flag criteria."""
+    logger.info(f"LangGraph [RED_FLAG_CHECK] Call={state['call_id']}")
+    eval_result = check_red_flag_symptoms(state.get("symptoms", ""))
+
+    return {
+        "current_node": "RED_FLAG_CHECK",
+        "is_emergency": eval_result["is_emergency"],
+    }
+
+
+def routing_decision(state: ClinicalState) -> str:
+    """Conditional Edge: Route to Emergency Escalation or Slot Booking."""
+    if state.get("is_emergency", False):
+        return "emergency_escalation"
+    return "book_slot"
+
+
+def emergency_escalation_node(state: ClinicalState) -> Dict[str, Any]:
+    """Emergency Escalation Branch: Immediate transfer warning."""
+    logger.warning(f"LangGraph [EMERGENCY_ESCALATION] Call={state['call_id']}")
+    msg = (
+        "Your symptoms indicate potential cardiovascular distress. "
+        "Please remain calm while I immediately connect you to emergency medical services."
+    )
+    return {
+        "current_node": "EMERGENCY_ESCALATION",
+        "messages": state["messages"] + [{"role": "assistant", "content": msg}],
+    }
+
+
+def book_slot_node(state: ClinicalState) -> Dict[str, Any]:
+    """Node 3: Query EHR and offer an appointment slot."""
+    logger.info(f"LangGraph [BOOKING_SLOT] Call={state['call_id']}")
+    slots = find_available_slots("General Medicine")
+    chosen = slots[0] if slots else None
+
+    msg = (
+        f"Thank you for sharing your symptoms. I have an available slot with {chosen['doctor']} "
+        f"at {chosen['time']}. Would you like me to book this for you?"
+        if chosen else
+        "I am checking with our scheduling coordinator to find the next available doctor."
+    )
+
+    return {
+        "current_node": "BOOKING_SLOT",
+        "recommended_slot": chosen,
+        "messages": state["messages"] + [{"role": "assistant", "content": msg}],
+    }
+
+
+def confirm_booking_node(state: ClinicalState) -> Dict[str, Any]:
+    """Node 4: Confirm appointment reservation in EHR."""
+    logger.info(f"LangGraph [CONFIRMATION] Call={state['call_id']}")
+    slot = state.get("recommended_slot")
+    slot_id = slot["slot_id"] if slot else "slot-01"
+
+    booking = book_appointment_slot(state["patient_id"], slot_id)
+    msg = f"Your appointment has been confirmed. Your confirmation code is {booking['confirmation_code']}."
+
+    return {
+        "current_node": "CONFIRMATION",
+        "confirmation_code": booking["confirmation_code"],
+        "messages": state["messages"] + [{"role": "assistant", "content": msg}],
+    }
+
+
+class ClinicalTriageGraph:
+    """
+    State machine controller encapsulating clinical triage workflow.
+    Provides execution step method and streaming token simulation.
+    """
+
+    def __init__(self, redis_url: Optional[str] = None):
+        self.redis_url = redis_url
+        logger.info(f"Initialized ClinicalTriageGraph (Redis: {redis_url or 'in-memory'})")
+
+    async def step(self, state: ClinicalState) -> ClinicalState:
+        """Executes the state transition cycle based on current state."""
+        current = state.get("current_node", "INIT")
+
+        if current in ("INIT", "CONFIRMATION"):
+            out = triage_symptoms_node(state)
+            state.update(out)
+            out = red_flag_check_node(state)
+            state.update(out)
+
+            next_route = routing_decision(state)
+            if next_route == "emergency_escalation":
+                out = emergency_escalation_node(state)
+            else:
+                out = book_slot_node(state)
+            state.update(out)
+            return state
+
+        elif current == "BOOKING_SLOT":
+            out = confirm_booking_node(state)
+            state.update(out)
+            return state
+
+        return state
+
+    async def stream_tokens(self, text: str):
+        """Streams text word-by-word with realistic token arrival cadence."""
+        import asyncio
+        words = text.split(" ")
+        for i, word in enumerate(words):
+            yield word + (" " if i < len(words) - 1 else "")
+            await asyncio.sleep(0.04) # 40ms token arrival pace
