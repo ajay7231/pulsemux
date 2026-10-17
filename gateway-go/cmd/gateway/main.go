@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -80,10 +79,8 @@ func main() {
 		port = "8080"
 	}
 
-	workerAddr := os.Getenv("WORKER_ADDR")
-	if workerAddr == "" {
-		workerAddr = "localhost:50051"
-	}
+	// WORKER_ADDR used by gRPC client when connecting to the Python worker
+	_ = os.Getenv("WORKER_ADDR")
 
 	server := NewGatewayServer()
 	webrtcHandler := ingress.NewWebRTCHandler()
