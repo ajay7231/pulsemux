@@ -1,11 +1,11 @@
 'use strict';
-const $ = id => document.getElementById(id);
 
 // Energy VAD after browser noise suppression. This rejects steady room noise and
 // short clicks; it is not a neural speech/noise classifier.
 class TurnDetector {
   constructor() { this.reset(); }
   reset() {
+    this.pauseFrames = this.pauseFrames || 40;
     this.noise = 0.002; this.calibration = 25; this.attack = 0;
     this.speaking = false; this.silence = 0; this.duration = 0;
   }
@@ -27,7 +27,7 @@ class TurnDetector {
     } else {
       this.duration++;
       this.silence = rms > threshold * 0.65 ? 0 : this.silence + 1;
-      if (this.silence >= 40 || this.duration >= 1000) {
+      if (this.silence >= this.pauseFrames || this.duration >= 1000) {
         this.speaking = false; this.attack = 0;
         return 'end';
       }
@@ -43,9 +43,13 @@ function linearToMuLaw(value) {
   for (let mask = 0x4000; exponent > 0 && !(pcm & mask); mask >>= 1) exponent--;
   return (~(sign | (exponent << 4) | ((pcm >> (exponent + 3)) & 15))) & 255;
 }
+export function createCallSimulator(root = document, options = {}) {
+const $ = id => root === document ? document.getElementById(id) : root.querySelector(`[data-call="${id}"]`);
+let disposed = false, generation = 0;
 let ws = null, stream = null, context = null, capture = null;
 let calling = false, starting = false, muted = false, endingCall = false, turnId = null;
 let hangupTimer = null;
+let callAcknowledged = false;
 let detector = new TurnDetector(), sequence = 0, streamSid = null, callSid = null;
 let startedAt = 0, timer = null, playbackEpoch = 0, playbackChain = Promise.resolve();
 let sources = new Set(), assistantMessage = null, responseText = '', receivedAudio = false;
@@ -58,7 +62,7 @@ function status(title, description) {
   if (description) $('status-desc').textContent = description;
 }
 function renderState() {
-  const speaking = sources.size > 0 || speechSynthesis.speaking;
+  const speaking = sources.size > 0 || globalThis.speechSynthesis?.speaking;
   $('orb-core').className = 'orb' + (speaking ? ' orb-state-speaking' : calling && detector.speaking ? ' orb-state-listening' : '');
   if (!calling) return;
   if (endingCall) status('Ending call…', 'The call will disconnect after the goodbye.');
@@ -72,7 +76,7 @@ function renderState() {
 function stopPlayback() {
   playbackEpoch++;
   for (const source of sources) { try { source.stop(); } catch {} }
-  sources.clear(); speechSynthesis.cancel();
+  sources.clear(); globalThis.speechSynthesis?.cancel();
   playbackChain = Promise.resolve();
   assistantMessage = null; generating = false;
 }
@@ -143,6 +147,12 @@ function handleMessage(msg) {
   if (!calling) return;
   if (msg.turn_id && msg.turn_id !== turnId) return;
   switch (msg.type) {
+    case 'call_started':
+      callAcknowledged = true;
+      if (msg.settings) detector.pauseFrames = Math.round(msg.settings.end_pause_ms / 20);
+      break;
+    case 'call_ended':
+      endCall(); if (msg.message) notice(msg.message); return;
     case 'transcript': appendMessage('You', msg.text); generating = true; break;
     case 'token':
       if (!assistantMessage) assistantMessage = appendMessage('PulseMux assistant', '');
@@ -171,7 +181,10 @@ function handleMessage(msg) {
       $('triage-label').textContent = msg.is_emergency ? 'CLINICAL TRIAGE: EMERGENCY' : 'CLINICAL TRIAGE: ROUTINE'; break;
     case 'telemetry_stt': $('hud-stt').textContent = `${msg.latency_ms} ms`; break;
     case 'telemetry_ttft': $('hud-ttft').textContent = `${msg.ttft_ms} ms`; break;
-    case 'stt_empty': case 'error': generating = false; notice(msg.message); break;
+    case 'stt_empty': case 'error':
+      generating = false;
+      if (msg.type === 'error' && !callAcknowledged) endCall();
+      notice(msg.message); break;
     // An interrupt acknowledgement never sends another interrupt.
     case 'interrupted': break;
   }
@@ -184,9 +197,9 @@ async function connect() {
     const timeout = setTimeout(() => { socket.close(); reject(new Error('The voice server did not respond.')); }, 8000);
     socket.onopen = () => { clearTimeout(timeout); resolve(); };
     socket.onerror = () => { clearTimeout(timeout); reject(new Error('Cannot connect to the voice server.')); };
-    socket.onclose = () => {
+    socket.onclose = (event) => {
       clearTimeout(timeout); reject(new Error('Voice connection closed.'));
-      if (calling) { endCall(); notice('Connection lost. Start a new call to reconnect.'); }
+      if (calling) { endCall(); notice(event.code === 4401 ? 'Sign in to your workspace and open the agent test again.' : 'Connection lost. Start a new call to reconnect.'); }
     };
     socket.onmessage = e => handleMessage(JSON.parse(e.data));
   });
@@ -198,23 +211,34 @@ function updateConfig() {
   send({type: 'config', stt_engine: $('select-stt').value, voice_id: voice});
 }
 async function toggleCall() {
-  if (starting) return;
+  if (!options.agent?.id) { notice('Open an agent from the dashboard to test it.'); return; }
+  if (starting || disposed) return;
   if (calling) { endCall(); return; }
+  const attempt = ++generation;
   starting = true; $('btn-record').disabled = true; notice('');
   try {
     if (!navigator.mediaDevices?.getUserMedia) throw new Error('Microphone access requires localhost or HTTPS.');
-    context = new AudioContext(); await context.resume();
-    stream = await navigator.mediaDevices.getUserMedia({audio: {
+    const audioContext = new AudioContext(); context = audioContext; await audioContext.resume();
+    if (disposed || attempt !== generation) return;
+    const microphone = await navigator.mediaDevices.getUserMedia({audio: {
       channelCount: 1, echoCancellation: true,
       noiseSuppression: $('noise-suppression').checked, autoGainControl: true
     }});
+    if (disposed || attempt !== generation) {
+      microphone.getTracks().forEach(track => track.stop());
+      await audioContext.close().catch(() => {});
+      return;
+    }
+    stream = microphone;
     const track = stream.getAudioTracks()[0];
     track.onended = () => { if (calling) { endCall(); notice('Microphone disconnected.'); } };
     const settings = track.getSettings();
     $('noise-status').textContent = settings.noiseSuppression === true ? 'Noise suppression active' : settings.noiseSuppression === false ? 'Noise suppression off · adaptive gate active' : 'Adaptive noise gate active';
     await context.audioWorklet.addModule('/static/mic-worklet.js');
+    if (disposed || attempt !== generation) return;
     await connect();
-    calling = true; muted = false; endingCall = false; frames = 0; sequence = 1;
+    if (disposed || attempt !== generation) return;
+    calling = true; muted = false; endingCall = false; callAcknowledged = false; frames = 0; sequence = 1;
     detector.reset(); beginTurn();
     streamSid = 'MZ' + newId().replaceAll('-', ''); callSid = 'CA' + newId().replaceAll('-', '');
     $('messages-container').replaceChildren();
@@ -223,7 +247,7 @@ async function toggleCall() {
     $('triage-label').textContent = 'CLINICAL TRIAGE STANDBY';
     updateConfig();
     send({event: 'connected', protocol: 'Call', version: '1.0.0'});
-    send({event: 'start', sequenceNumber: String(sequence++), streamSid,
+    send({event: 'start', agent_id: options.agent.id, draft: options.draft !== false, sequenceNumber: String(sequence++), streamSid,
       turn_id: turnId, start: {streamSid, callSid, accountSid: 'AC_BROWSER_SIMULATOR', tracks: ['inbound'],
         mediaFormat: {encoding: 'audio/x-mulaw', sampleRate: 8000, channels: 1}}});
     const source = context.createMediaStreamSource(stream);
@@ -243,6 +267,7 @@ async function toggleCall() {
     $('connection-status').style.color = 'var(--emerald)';
     renderState();
   } catch (error) {
+    if (disposed) return;
     endCall(); notice(error.name === 'NotAllowedError' ? 'Microphone permission was denied. Allow access and start the call again.' : error.message);
   } finally { starting = false; $('btn-record').disabled = false; }
 }
@@ -270,6 +295,7 @@ function updateClock() {
   $('call-duration').textContent = `${String(Math.floor(seconds / 60)).padStart(2, '0')}:${String(seconds % 60).padStart(2, '0')}`;
 }
 function endCall() {
+  generation++;
   const wasCalling = calling; calling = false; endingCall = false; turnId = null;
   clearTimeout(hangupTimer); hangupTimer = null;
   stopPlayback(); clearInterval(timer);
@@ -280,7 +306,8 @@ function endCall() {
   if (context) { context.close().catch(() => {}); context = null; }
   $('btn-record').classList.remove('recording'); $('btn-record-text').textContent = 'Start call';
   $('btn-mute').disabled = true; $('user-text-input').disabled = true; $('btn-send').disabled = true;
-  $('select-stt').disabled = false; $('select-voice').disabled = false; $('noise-suppression').disabled = false;
+  const managed = !!options.agent;
+  $('select-stt').disabled = managed; $('select-voice').disabled = managed; $('noise-suppression').disabled = false;
   $('connection-status').textContent = 'CALL OFFLINE'; $('connection-status').style.color = 'var(--text-muted)';
   $('noise-status').textContent = 'Microphone off'; $('mic-level').style.width = '0%';
   $('orb-core').className = 'orb';
@@ -304,4 +331,19 @@ function sendTextMessage() {
   send({type: 'user_text', text, turn_id: turnId}); $('user-text-input').value = ''; renderState();
 }
 function handleKey(e) { if (e.key === 'Enter') sendTextMessage(); }
+// Controller lifecycle: shared by the dashboard and the standalone simulator.
 window.addEventListener('pagehide', endCall);
+if (options.agent) {
+  $('select-stt').value = options.agent.config.stt_engine;
+  $('select-voice').value = options.agent.config.voice_id;
+  $('select-stt').disabled = true; $('select-voice').disabled = true;
+}
+return {
+  toggleCall, toggleMute, sendTextMessage, handleKey,
+  destroy() {
+    disposed = true;
+    endCall();
+    window.removeEventListener('pagehide', endCall);
+  }
+};
+}

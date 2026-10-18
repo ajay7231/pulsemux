@@ -17,10 +17,10 @@ import (
 )
 
 type GatewayServer struct {
-	mu          sync.RWMutex
-	sessions    map[string]*session.CallSession
-	mockWorker  *rpc.MockWorkerStream
-	grpcClient  *rpc.Client
+	mu         sync.RWMutex
+	sessions   map[string]*session.CallSession
+	mockWorker *rpc.MockWorkerStream
+	grpcClient *rpc.Client
 }
 
 func NewGatewayServer() *GatewayServer {
@@ -130,13 +130,20 @@ func main() {
 
 	mux := http.NewServeMux()
 
-	// Browser test console and simulation
-	mux.HandleFunc("/", consoleServer.Handler())
-	mux.HandleFunc("/api/simulate-agent", consoleServer.SimulateAgentHandler())
-
-	// Ingress endpoints
-	mux.HandleFunc("/ws/twilio", ingress.TwilioWebSocketHandler(server))
-	mux.HandleFunc("/webrtc/sdp", webrtcHandler.HTTPHandler())
+	if runtimeURL := os.Getenv("VOICE_RUNTIME_URL"); runtimeURL != "" {
+		proxy, err := ingress.PlatformProxy(runtimeURL)
+		if err != nil {
+			log.Fatal(err)
+		}
+		mux.Handle("/", proxy)
+		log.Println("Platform mode: dashboard and Twilio streams use the shared agent runtime")
+	} else {
+		// Retain the standalone transport console for audio development.
+		mux.HandleFunc("/", consoleServer.Handler())
+		mux.HandleFunc("/api/simulate-agent", consoleServer.SimulateAgentHandler())
+		mux.HandleFunc("/ws/twilio", ingress.TwilioWebSocketHandler(server))
+		mux.HandleFunc("/webrtc/sdp", webrtcHandler.HTTPHandler())
+	}
 
 	// Health and metrics
 	mux.HandleFunc("/healthz", func(w http.ResponseWriter, r *http.Request) {
@@ -149,6 +156,10 @@ func main() {
 		Handler:      mux,
 		ReadTimeout:  15 * time.Second,
 		WriteTimeout: 15 * time.Second,
+	}
+
+	if os.Getenv("VOICE_RUNTIME_URL") != "" {
+		httpServer.WriteTimeout = 0
 	}
 
 	// Graceful shutdown listener

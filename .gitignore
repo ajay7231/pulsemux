@@ -31,3 +31,12 @@ worker-py/models/
 *.onnx
 *.bin
 Plan.md
+node_modules
+
+# Platform local data, secret material, and frontend build dependencies
+worker-py/data/
+dashboard/node_modules/
+worker-py/web/dashboard/
+*.db
+*.db-shm
+*.db-wal

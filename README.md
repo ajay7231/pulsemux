@@ -1,3 +1,10 @@
+> **New: Clinical voice operations platform.** Run `make platform` and open
+> **http://localhost:8001/dashboard/** to create a hospital workspace, configure
+> encrypted provider connections, build and test agents, attach approved knowledge,
+> and manage calls and campaigns. See [the platform guide](docs/PLATFORM.md) for
+> setup, deployment, architecture, operational limits, and testing. The original
+> media-gateway and benchmark documentation is retained below.
+
 # PulseMux: Sub-500ms Bi-Directional Clinical Voice Gateway
 
 [![Go](https://img.shields.io/badge/Go-1.23-00ADD8?logo=go&logoColor=white)](https://golang.org)

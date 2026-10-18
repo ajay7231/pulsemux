@@ -20,3 +20,14 @@ soundfile>=0.12.0
 fastapi>=0.115.0
 uvicorn[standard]>=0.30.0
 numpy>=1.24.0
+
+# Persistent clinical voice platform
+SQLAlchemy>=2.0,<2.1
+cryptography>=42
+psycopg[binary]>=3.1
+twilio>=9,<10
+python-multipart>=0.0.18
+pypdf>=5
+alembic>=1.13
+celery[redis]>=5.4,<6
+pgvector>=0.3

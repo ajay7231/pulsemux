@@ -49,3 +49,34 @@ ui: studio
 
 
 
+.PHONY: dashboard-build platform platform-worker platform-test platform-up platform-down
+
+dashboard-build:
+	@npm --prefix dashboard ci --no-audit --no-fund
+	@npm --prefix dashboard run build
+
+platform: dashboard-build
+	@$(PYTHON) -B -m uvicorn app.web_server:app --app-dir worker-py --host 127.0.0.1 --port 8001
+
+platform-worker:
+	@cd worker-py && .venv/bin/python -B -m app.platform.jobs
+
+platform-test:
+	@$(PYTHON) -B -m unittest discover -s worker-py/tests
+	@node --test worker-py/tests/call.test.cjs
+	@npm --prefix dashboard test
+	@npm --prefix dashboard run build
+
+platform-up:
+	@docker compose -f deploy/platform-compose.yml up --build -d
+
+platform-down:
+	@docker compose -f deploy/platform-compose.yml down
+
+.PHONY: postgres-up postgres-down
+postgres-up:
+	@$(PYTHON) -B -c 'from pathlib import Path; import secrets; p=Path("worker-py/data/postgres.env"); p.parent.mkdir(parents=True, exist_ok=True, mode=0o700); p.exists() or (p.touch(mode=0o600), p.write_text("POSTGRES_PASSWORD=" + secrets.token_hex(32) + "\n"))'
+	@docker compose --env-file worker-py/data/postgres.env -f deploy/postgres-compose.yml up -d --wait
+
+postgres-down:
+	@docker compose --env-file worker-py/data/postgres.env -f deploy/postgres-compose.yml down

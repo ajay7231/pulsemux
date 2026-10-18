@@ -30,13 +30,14 @@ import httpx
 import numpy as np
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, HTMLResponse
+from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 
 from app.agent.tools import check_red_flag_symptoms, find_available_slots, book_appointment_slot
 from app.pipeline.tts_stream import ClauseSplitter, KokoroEngine
 from app.pipeline.call_audio import CallAudio
 from app.pipeline.call_control import user_requested_hangup, assistant_said_farewell
+from app.platform.api import router as platform_router
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s")
 logger = logging.getLogger("voice-studio")
@@ -48,13 +49,7 @@ DEEPGRAM_VOICES = {f"aura-2-{name}-en" for name in (
 
 app = FastAPI(title="PulseMux Clinical Voice Studio")
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+app.include_router(platform_router)
 
 WEB_DIR = Path(__file__).resolve().parent.parent / "web"
 INDEX_FILE = WEB_DIR / "index.html"
@@ -62,10 +57,27 @@ app.mount("/static", StaticFiles(directory=str(WEB_DIR)), name="static")
 
 
 @app.get("/")
+async def platform_index():
+    return RedirectResponse("/dashboard/")
+
+
+@app.get("/simulator")
 async def get_index():
     if INDEX_FILE.exists():
         return FileResponse(str(INDEX_FILE))
     return HTMLResponse("<h2>PulseMux Web UI not found</h2>", status_code=404)
+
+
+@app.get('/readyz')
+async def readyz():
+    from app.platform.database import database
+    from app.platform.security import cipher
+    from sqlalchemy import text
+    def check():
+        with database().Session() as db: db.execute(text('SELECT 1'))
+        cipher()
+    await asyncio.to_thread(check)
+    return {'status':'ready'}
 
 
 @app.get("/healthz")
@@ -91,6 +103,11 @@ class VoiceSession:
         self.tts_fallback_reason = None
         self.call_audio = CallAudio()
         self.ending_call = False
+        self.keys_managed = False
+        self.provider_keys = {}
+
+    def provider_key(self, channel, env_name):
+        return self.provider_keys.get(channel) if self.keys_managed else os.getenv(env_name)
 
     async def send_json(self, data: dict):
         if self.is_active:
@@ -102,8 +119,8 @@ class VoiceSession:
     async def transcribe_audio(self, audio_bytes: bytes, mime_type: str = "audio/webm") -> Optional[str]:
         """Transcribes incoming audio bytes using Deepgram Nova-3 or Groq Whisper."""
         t0 = time.time()
-        deepgram_key = os.getenv("DEEPGRAM_API_KEY")
-        groq_key = os.getenv("GROQ_API_KEY")
+        deepgram_key = self.provider_key("stt", "DEEPGRAM_API_KEY") if self.stt_engine == "deepgram" else None
+        groq_key = self.provider_key("stt", "GROQ_API_KEY") if self.stt_engine == "groq" else (None if self.keys_managed else os.getenv("GROQ_API_KEY"))
 
         # Prioritize Deepgram if selected and key available
         if self.stt_engine == "deepgram" and deepgram_key:
@@ -171,7 +188,7 @@ class VoiceSession:
         """
         if self.tts_engine == "deepgram":
             if not self.tts_fallback_reason:
-                key = os.getenv("DEEPGRAM_API_KEY")
+                key = self.provider_key("tts", "DEEPGRAM_API_KEY")
                 if not key:
                     self.tts_fallback_reason = "DEEPGRAM_API_KEY is not configured."
                 else:
@@ -228,7 +245,7 @@ class VoiceSession:
             return None
 
     async def greet(self, turn_id):
-        text = "Hello, I am your PulseMux clinical assistant. How can I help you today?"
+        text = getattr(self, "greeting", "Hello, I am your PulseMux clinical assistant. How can I help you today?")
         self.messages.append({"role": "assistant", "content": text})
         await self.send_json({"type": "token", "delta": text, "turn_id": turn_id})
         audio = await self.synthesize_audio(text, turn_id)
@@ -284,7 +301,7 @@ class VoiceSession:
             "turn_id": turn_id,
         })
 
-        groq_key = os.getenv("GROQ_API_KEY")
+        groq_key = self.provider_key("llm", "GROQ_API_KEY")
         if not groq_key:
             fallback_msg = (
                 "Your symptoms indicate potential emergency distress. Please call 911 immediately."
@@ -319,6 +336,7 @@ class VoiceSession:
             "   Never output markdown asterisks, bullet points, or list numbers."
         )
 
+        system_prompt = getattr(self, "system_prompt", system_prompt)
         messages = [{"role": "system", "content": system_prompt}]
         for m in self.messages[-5:]:
             messages.append({"role": m["role"], "content": m["content"]})
@@ -329,7 +347,7 @@ class VoiceSession:
             "Content-Type": "application/json",
         }
         payload = {
-            "model": "qwen/qwen3.8-27b",
+            "model": getattr(self, "llm_model", "qwen/qwen3.8-27b"),
             "messages": messages,
             "stream": True,
             "max_tokens": 120,
@@ -343,7 +361,7 @@ class VoiceSession:
         try:
             async with httpx.AsyncClient(timeout=10.0) as client:
                 async with client.stream(
-                    "POST", "https://api.groq.com/openai/v1/chat/completions",
+                    "POST", getattr(self, "llm_endpoint", "https://api.groq.com/openai/v1/chat/completions"),
                     headers=headers, json=payload
                 ) as response:
                     response.raise_for_status()
@@ -463,13 +481,31 @@ async def voice_websocket(ws: WebSocket):
 
     This is a local simulator endpoint, not a public Twilio webhook.
     """
+    from app.platform.security import websocket_user
+    try:
+        user = websocket_user(ws)
+        if user.role not in {"admin", "operator"}:
+            await ws.close(code=4403)
+            return
+    except Exception:
+        await ws.close(code=4401)
+        return
     await ws.accept()
     session = VoiceSession(ws)
     call_started = False
     await session.send_json({"type": "connected", "session_id": session.session_id})
+    started_at = time.monotonic()
     try:
         while True:
-            data = await ws.receive()
+            if session.keys_managed and call_started:
+                if time.monotonic()-started_at > session.config['max_duration_seconds'] or time.monotonic()-session.last_activity > session.config['silence_timeout_seconds']:
+                    await cancel_turn(session)
+                    await session.send_json({'type':'call_ended','message':'The call reached its duration or inactivity limit.'})
+                    break
+            try:
+                data = await asyncio.wait_for(ws.receive(), 1.0)
+            except asyncio.TimeoutError:
+                continue
             if data["type"] == "websocket.disconnect":
                 break
             if not data.get("text"):
@@ -479,7 +515,7 @@ async def voice_websocket(ws: WebSocket):
                 kind = msg.get("type") or msg.get("event")
                 if session.ending_call and kind not in {"stop", "start"}:
                     continue
-                if kind == "config":
+                if kind == "config" and not session.keys_managed:
                     if msg.get("stt_engine") in {"deepgram", "groq"}:
                         session.stt_engine = msg["stt_engine"]
                     if not call_started and "voice_id" in msg:
@@ -491,12 +527,32 @@ async def voice_websocket(ws: WebSocket):
                             await session.send_json({"type": "error", "message": "Unsupported TTS voice."})
                 elif kind == "start":
                     await cancel_turn(session)
+                    if getattr(session, 'keys_managed', False):
+                        await session.close_record()
+                    from app.platform.database import database
+                    from app.platform.service import runtime_bundle, event
+                    from app.platform.models import Call
+                    from app.platform.runtime import session_class
+                    try:
+                        with database().Session() as db:
+                            agent, version, config, knowledge = runtime_bundle(db, user, msg.get('agent_id'), bool(msg.get('draft')))
+                            if not version:
+                                config['_draft_revision'] = agent.revision
+                            call = Call(workspace_id=user.workspace_id,agent_id=agent.id,version_id=version.id if version else None,
+                                        direction='simulation',config=config,knowledge=knowledge,variables={})
+                            db.add(call);db.flush();event(db,call,'started',{'draft':version is None});db.commit()
+                            call_id=call.id
+                        session=session_class()(ws,call_id)
+                    except Exception as exc:
+                        await session.send_json({'type':'error','message':getattr(exc,'detail','Could not load this agent')})
+                        continue
                     session.messages.clear()
                     session.ending_call = False
                     session.tts_fallback_reason = None
                     session.call_audio = CallAudio()
                     call_started = True
-                    await session.send_json({"type": "call_started"})
+                    started_at = time.monotonic()
+                    await session.send_json({"type": "call_started", "call_id":session.call_id, "settings":session.config, "agent_name":agent.name})
                     session.active_turn_task = asyncio.create_task(session.greet(msg.get("turn_id")))
                 elif kind == "media" and call_started:
                     frame = base64.b64decode(msg["media"]["payload"], validate=True)
@@ -521,6 +577,7 @@ async def voice_websocket(ws: WebSocket):
                 elif kind == "stop":
                     call_started = False
                     await cancel_turn(session)
+                    if session.keys_managed: await session.close_record()
                     session.call_audio = CallAudio()
                     await session.send_json({"type": "call_ended"})
             except (ValueError, KeyError, TypeError):
@@ -530,7 +587,19 @@ async def voice_websocket(ws: WebSocket):
     finally:
         session.is_active = False
         await cancel_turn(session)
+        if session.keys_managed: await session.close_record()
         logger.info("Client disconnected: %s", session.session_id)
+
+
+from app.platform.telephony import router as telephony_router
+app.include_router(telephony_router)
+DASHBOARD_DIR = WEB_DIR / "dashboard"
+if DASHBOARD_DIR.exists():
+    app.mount("/dashboard", StaticFiles(directory=str(DASHBOARD_DIR), html=True), name="dashboard")
+else:
+    @app.get("/dashboard/")
+    async def dashboard_unbuilt():
+        return HTMLResponse("<h1>Build the dashboard with: make dashboard-build</h1>", status_code=503)
 
 
 def main():

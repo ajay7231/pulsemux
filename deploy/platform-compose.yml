@@ -1,0 +1,85 @@
+name: pulsemux-platform
+x-platform: &platform
+  build:
+    context: ..
+    dockerfile: deploy/platform.Dockerfile
+  environment: &environment
+    PLATFORM_ENV: production
+    PLATFORM_SETUP_TOKEN: ${PLATFORM_SETUP_TOKEN:?Set PLATFORM_SETUP_TOKEN}
+    DATABASE_URL: postgresql+psycopg://pulsemux:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}@postgres:5432/pulsemux
+    REDIS_URL: redis://redis:6379/0
+    PLATFORM_ENCRYPTION_KEYS: ${PLATFORM_ENCRYPTION_KEYS:?Set PLATFORM_ENCRYPTION_KEYS}
+    PUBLIC_BASE_URL: ${PUBLIC_BASE_URL:?Set PUBLIC_BASE_URL}
+    PLATFORM_DATA_DIR: /data
+  depends_on:
+    postgres:
+      condition: service_healthy
+    redis:
+      condition: service_healthy
+  restart: unless-stopped
+  volumes:
+    - platform-data:/data
+    - ../worker-py/models:/app/models:ro
+services:
+  platform:
+    <<: *platform
+    ports:
+      - '127.0.0.1:8001:8000'
+    healthcheck:
+      test: ['CMD', 'python', '-c', 'import urllib.request; urllib.request.urlopen("http://localhost:8000/readyz")']
+      interval: 20s
+      timeout: 5s
+      retries: 5
+  gateway:
+    build:
+      context: ../gateway-go
+    environment:
+      PORT: '8080'
+      VOICE_RUNTIME_URL: http://platform:8000
+    ports:
+      - '127.0.0.1:8080:8080'
+    depends_on:
+      platform:
+        condition: service_healthy
+    restart: unless-stopped
+  worker:
+    <<: *platform
+    command: ['celery', '-A', 'app.platform.jobs:celery', 'worker', '--loglevel=warning', '--concurrency=2']
+    depends_on:
+      platform:
+        condition: service_healthy
+  scheduler:
+    <<: *platform
+    command: ['celery', '-A', 'app.platform.jobs:celery', 'beat', '--loglevel=warning', '--schedule=/data/celerybeat-schedule']
+    depends_on:
+      platform:
+        condition: service_healthy
+  postgres:
+    image: pgvector/pgvector:pg17
+    environment:
+      POSTGRES_DB: pulsemux
+      POSTGRES_USER: pulsemux
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U pulsemux -d pulsemux']
+      interval: 5s
+      timeout: 3s
+      retries: 15
+    restart: unless-stopped
+  redis:
+    image: redis:7-alpine
+    command: ['redis-server', '--appendonly', 'yes']
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+volumes:
+  postgres-data:
+  redis-data:
+  platform-data:

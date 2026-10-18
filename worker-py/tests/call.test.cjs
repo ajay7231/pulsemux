@@ -3,7 +3,12 @@ const assert = require('node:assert/strict');
 const vm = require('node:vm');
 const fs = require('node:fs');
 const path = require('node:path');
-const script = fs.readFileSync(path.join(__dirname, '../web/call.js'), 'utf8');
+// Exercise the shared controller body with isolated browser globals.
+const source = fs.readFileSync(path.join(__dirname, '../web/call.js'), 'utf8');
+const script = source.split('// Controller lifecycle:')[0].replace(
+  'export function createCallSimulator(root = document, options = {}) {',
+  'const root = document, options = {};'
+);
 const sandbox = {window: {addEventListener() {}}, document: {getElementById() {}}, console};
 vm.createContext(sandbox);
 vm.runInContext(script + '\nthis.TurnDetector = TurnDetector; this.encode = linearToMuLaw;', sandbox);

@@ -12,6 +12,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from app.web_server import VoiceSession, DEEPGRAM_VOICES, KOKORO_VOICES, INDEX_FILE, app
 from app.pipeline.call_audio import mulaw_wav
 from fastapi.testclient import TestClient
+from platform_support import platform_client, create_agent
 
 RealAsyncClient = httpx.AsyncClient
 
@@ -108,9 +109,10 @@ class DeepgramTTSTests(unittest.IsolatedAsyncioTestCase):
     def test_websocket_configuration_selects_deepgram_provider(self):
         async def greet(session, turn_id):
             await session.send_json({'type': 'test_config', 'provider': session.tts_engine, 'voice': session.voice_id})
-        with patch.object(VoiceSession, 'greet', greet), TestClient(app).websocket_connect('/ws/voice') as ws:
-            ws.receive_json()
-            ws.send_json({'type': 'config', 'voice_id': 'aura-2-helena-en', 'stt_engine': 'groq'})
-            ws.send_json({'event': 'start', 'turn_id': 'greeting'})
-            self.assertEqual(ws.receive_json()['type'], 'call_started')
-            self.assertEqual(ws.receive_json(), {'type': 'test_config', 'provider': 'deepgram', 'voice': 'aura-2-helena-en'})
+        with patch.object(VoiceSession, 'greet', greet), platform_client() as client:
+            agent=create_agent(client,tts_engine='deepgram',voice_id='aura-2-helena-en',stt_engine='groq')
+            with client.websocket_connect('/ws/voice') as ws:
+                ws.receive_json()
+                ws.send_json({'event': 'start', 'turn_id': 'greeting', 'agent_id':agent['id'], 'draft':True})
+                self.assertEqual(ws.receive_json()['type'], 'call_started')
+                self.assertEqual(ws.receive_json(), {'type': 'test_config', 'provider': 'deepgram', 'voice': 'aura-2-helena-en'})

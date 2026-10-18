@@ -13,12 +13,13 @@ from app.pipeline.call_audio import CallAudio, mulaw_wav
 from app.pipeline.call_control import user_requested_hangup, assistant_said_farewell
 from app.web_server import app, VoiceSession
 from fastapi.testclient import TestClient
+from platform_support import platform_client, create_agent
 
 
 class AudioTests(unittest.TestCase):
     def test_simulator_page_and_audio_assets_are_served(self):
         with TestClient(app) as client:
-            page = client.get('/')
+            page = client.get('/simulator')
             self.assertEqual(page.status_code, 200)
             self.assertIn('Start call', page.text)
             self.assertNotIn('Tap to Speak', page.text)
@@ -88,20 +89,22 @@ class AudioTests(unittest.TestCase):
                 cancelled.append(True)
                 raise
         with patch.object(VoiceSession, 'greet', greet), patch.object(VoiceSession, 'transcribe_audio', transcribe):
-            with TestClient(app).websocket_connect('/ws/voice') as ws:
-                self.assertEqual(ws.receive_json()['type'], 'connected')
-                ws.send_json({'event': 'start', 'turn_id': 'greeting'})
-                self.assertEqual(ws.receive_json()['type'], 'call_started')
-                self.assertEqual(ws.receive_json()['turn_id'], 'greeting')
-                ws.send_json({'type': 'speech_start'})
-                self.assertEqual(ws.receive_json()['type'], 'interrupted')
-                ws.send_json({'event': 'media', 'media': {'payload': base64.b64encode(b'\xff' * 160).decode()}})
-                ws.send_json({'type': 'speech_end', 'turn_id': 't1'})
-                self.assertEqual(ws.receive_json()['type'], 'test_transcribing')
-                ws.send_json({'type': 'interrupt'})
-                self.assertEqual(ws.receive_json()['type'], 'interrupted')
-                ws.send_json({'event': 'stop'})
-                self.assertEqual(ws.receive_json()['type'], 'call_ended')
+            with platform_client() as client:
+                agent=create_agent(client)
+                with client.websocket_connect('/ws/voice') as ws:
+                    self.assertEqual(ws.receive_json()['type'], 'connected')
+                    ws.send_json({'event': 'start', 'turn_id': 'greeting', 'agent_id':agent['id'], 'draft':True})
+                    self.assertEqual(ws.receive_json()['type'], 'call_started')
+                    self.assertEqual(ws.receive_json()['turn_id'], 'greeting')
+                    ws.send_json({'type': 'speech_start'})
+                    self.assertEqual(ws.receive_json()['type'], 'interrupted')
+                    ws.send_json({'event': 'media', 'media': {'payload': base64.b64encode(b'\xff' * 160).decode()}})
+                    ws.send_json({'type': 'speech_end', 'turn_id': 't1'})
+                    self.assertEqual(ws.receive_json()['type'], 'test_transcribing')
+                    ws.send_json({'type': 'interrupt'})
+                    self.assertEqual(ws.receive_json()['type'], 'interrupted')
+                    ws.send_json({'event': 'stop'})
+                    self.assertEqual(ws.receive_json()['type'], 'call_ended')
         self.assertEqual(cancelled, [True])
 
     def test_fallback_response_completes(self):

@@ -1,0 +1,12 @@
+.git
+.env
+*.env
+**/.venv
+**/node_modules
+worker-py/data
+worker-py/web/dashboard
+__pycache__
+**/__pycache__
+bin
+
+worker-py/models/
