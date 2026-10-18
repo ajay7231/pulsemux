@@ -102,7 +102,7 @@ class TTSStreamClient:
         """
         Synthesizes a single clause into a stream of 20ms 16kHz PCM frames (640 bytes).
         """
-        logger.info(f"TTS: Synthesizing clause for turn {turn_id}: '{clause}'")
+        logger.info("tts_clause turn_id=%s", turn_id)
         kokoro = self._get_kokoro()
 
         if kokoro:
@@ -130,7 +130,7 @@ class TTSStreamClient:
                     await asyncio.sleep(0.005) # Rapid yield into outbound buffer
                 return
             except Exception as e:
-                logger.error(f"Kokoro TTS generation error: {e}. Falling back to simulation.")
+                logger.error("provider_failure provider=kokoro operation=tts")
 
         if not self.api_key:
             # Fallback simulated audio frames

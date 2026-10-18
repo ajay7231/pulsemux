@@ -132,7 +132,7 @@ class PulseVoiceService:
         ctx.active_turn_id = turn_id
         ctx.turn_detector.reset()
 
-        logger.info(f"[Turn] Starting Turn {turn_id} for Call {ctx.call_id}: '{user_utterance}'")
+        logger.info("voice_turn_started turn_id=%s", turn_id)
         start_time = time.time()
 
         # Update patient conversation state

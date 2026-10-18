@@ -28,7 +28,7 @@ load_dotenv(Path(__file__).resolve().parent.parent.parent / ".env")
 
 import httpx
 import numpy as np
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
@@ -48,8 +48,15 @@ DEEPGRAM_VOICES = {f"aura-2-{name}-en" for name in (
 )}
 
 app = FastAPI(title="PulseMux Clinical Voice Studio")
+from app.platform.http_security import install_http_security
+install_http_security(app)
+from app.platform.observability import install_observability, router as diagnostics_router
+install_observability(app)
+app.include_router(diagnostics_router)
 
 app.include_router(platform_router)
+from app.platform.resources import router as resource_router
+app.include_router(resource_router)
 
 WEB_DIR = Path(__file__).resolve().parent.parent / "web"
 INDEX_FILE = WEB_DIR / "index.html"
@@ -146,9 +153,9 @@ class VoiceSession:
                         })
                         return transcript
                     else:
-                        logger.error(f"Deepgram STT failed {r.status_code}: {r.text}")
+                        logger.error("provider_failure provider=deepgram operation=stt status=%s", r.status_code)
             except Exception as e:
-                logger.error(f"Deepgram transcription error: {e}")
+                logger.error("provider_failure provider=deepgram operation=stt")
 
         # Fallback / Direct Groq Whisper Turbo
         if groq_key:
@@ -174,9 +181,9 @@ class VoiceSession:
                         })
                         return transcript
                     else:
-                        logger.error(f"Groq Whisper failed {r.status_code}: {r.text}")
+                        logger.error("provider_failure provider=groq operation=stt status=%s", r.status_code)
             except Exception as e:
-                logger.error(f"Groq Whisper error: {e}")
+                logger.error("provider_failure provider=groq operation=stt")
 
         return None
 
@@ -241,7 +248,7 @@ class VoiceSession:
                 wf.writeframes(pcm16)
             return base64.b64encode(wav_buf.getvalue()).decode("utf-8")
         except Exception as e:
-            logger.error(f"Kokoro synthesis failed: {e}")
+            logger.error("provider_failure provider=kokoro operation=tts")
             return None
 
     async def greet(self, turn_id):
@@ -443,7 +450,7 @@ class VoiceSession:
             })
 
         except Exception as e:
-            logger.error(f"Turn error: {e}")
+            logger.error("voice_turn_failure")
             await self.send_json({"type": "error", "turn_id": turn_id,
                                   "message": "The assistant could not respond. Please try again."})
 
@@ -470,7 +477,7 @@ async def transcribe_turn(session, audio, mime_type, turn_id):
     except asyncio.CancelledError:
         raise
     except Exception:
-        logger.exception("Transcription failed")
+        logger.error("transcription_failure")
         await session.send_json({"type": "error", "turn_id": turn_id,
                                  "message": "Transcription failed. Please try again."})
 
@@ -495,8 +502,19 @@ async def voice_websocket(ws: WebSocket):
     call_started = False
     await session.send_json({"type": "connected", "session_id": session.session_id})
     started_at = time.monotonic()
+    checked_session_at = 0.0
     try:
         while True:
+            if time.monotonic() - checked_session_at >= 1:
+                try:
+                    user = await asyncio.to_thread(websocket_user, ws)
+                    if user.role not in {"admin", "operator"}:
+                        await ws.close(code=4403)
+                        break
+                except HTTPException:
+                    await ws.close(code=4401)
+                    break
+                checked_session_at = time.monotonic()
             if session.keys_managed and call_started:
                 if time.monotonic()-started_at > session.config['max_duration_seconds'] or time.monotonic()-session.last_activity > session.config['silence_timeout_seconds']:
                     await cancel_turn(session)
@@ -526,6 +544,14 @@ async def voice_websocket(ws: WebSocket):
                         else:
                             await session.send_json({"type": "error", "message": "Unsupported TTS voice."})
                 elif kind == "start":
+                    try:
+                        user = await asyncio.to_thread(websocket_user, ws)
+                        if user.role not in {"admin", "operator"}:
+                            await ws.close(code=4403)
+                            break
+                    except HTTPException:
+                        await ws.close(code=4401)
+                        break
                     await cancel_turn(session)
                     if getattr(session, 'keys_managed', False):
                         await session.close_record()
@@ -595,7 +621,15 @@ from app.platform.telephony import router as telephony_router
 app.include_router(telephony_router)
 DASHBOARD_DIR = WEB_DIR / "dashboard"
 if DASHBOARD_DIR.exists():
-    app.mount("/dashboard", StaticFiles(directory=str(DASHBOARD_DIR), html=True), name="dashboard")
+    app.mount("/dashboard/assets", StaticFiles(directory=str(DASHBOARD_DIR / "assets")), name="dashboard-assets")
+
+    @app.get("/dashboard", include_in_schema=False)
+    async def dashboard_redirect():
+        return RedirectResponse("/dashboard/")
+
+    @app.get("/dashboard/{path:path}", include_in_schema=False)
+    async def dashboard_application(path: str):
+        return FileResponse(str(DASHBOARD_DIR / "index.html"))
 else:
     @app.get("/dashboard/")
     async def dashboard_unbuilt():

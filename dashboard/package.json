@@ -5,24 +5,37 @@
   "type": "module",
   "scripts": {
     "dev": "vite --host 127.0.0.1",
-    "build": "tsc --noEmit && vite build",
+    "build": "tsc --noEmit && vite build && npm run budget",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "contracts": "../worker-py/.venv/bin/python -B ../scripts/export_platform_schema.py && openapi-typescript openapi.json -o src/contracts/generated.ts",
+    "lint": "eslint src",
+    "lint:fix": "eslint src --fix",
+    "format": "prettier --write \"src/**/*.{ts,tsx,css}\" \"!src/contracts/generated.ts\" \"!src/**/*.test.*\" \"!src/**/*.spec.*\"",
+    "format:check": "prettier --check \"src/**/*.{ts,tsx,css}\" \"!src/contracts/generated.ts\" \"!src/**/*.test.*\" \"!src/**/*.spec.*\"",
+    "budget": "node scripts/check-bundle.mjs"
   },
   "dependencies": {
+    "@tanstack/react-query": "^5.104.4",
     "lucide-react": "^0.468.0",
     "react": "^19.0.0",
-    "react-dom": "^19.0.0"
+    "react-dom": "^19.0.0",
+    "react-router-dom": "^7.18.4",
+    "zod": "^4.6.7"
   },
   "devDependencies": {
+    "@eslint/js": "^10.0.1",
     "@testing-library/react": "^16.3.3",
     "@testing-library/user-event": "^14.6.8",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
     "@vitejs/plugin-react": "^4.3.0",
+    "eslint": "^10.13.0",
     "jsdom": "^26.1.0",
+    "openapi-typescript": "^7.13.0",
     "prettier": "^3.9.10",
     "typescript": "^5.7.0",
+    "typescript-eslint": "^8.71.2",
     "vite": "^6.0.0",
     "vitest": "^3.2.7"
   }

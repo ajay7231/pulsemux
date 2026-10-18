@@ -3,7 +3,7 @@ import react from "@vitejs/plugin-react";
 export default defineConfig({
   plugins: [react()],
   base: "/dashboard/",
-  build: { outDir: "../worker-py/web/dashboard", emptyOutDir: true },
+  build: { outDir: "../worker-py/web/dashboard", emptyOutDir: true, manifest: true },
   server: {
     proxy: {
       "/api": "http://127.0.0.1:8001",

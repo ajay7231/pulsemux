@@ -29,7 +29,16 @@ export type WorkspacePageProps = {
   setDocuments: React.Dispatch<React.SetStateAction<Row[]>>;
   setModal: React.Dispatch<React.SetStateAction<string>>;
   formSubmit: (fn: () => Promise<void>) => (event: FormEvent) => void;
-  setSession: React.Dispatch<React.SetStateAction<Row | null>>;
+  setSession: (value: unknown) => void;
   timezones: string[];
   data: Row[];
+  pagination: {
+    page: number;
+    pages: number;
+    total: number;
+    pageSize: number;
+    setPage: (value: number) => void;
+  };
+  sort: string;
+  setSort: (value: string) => void;
 };

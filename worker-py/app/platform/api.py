@@ -50,22 +50,18 @@ from .service import (
     knowledge_hash,
 )
 
+from .contracts import (
+    SessionPublic,
+    UserPublic,
+    AgentPublic,
+    ConnectionPublic,
+    WorkspacePublic,
+)
+
+from .contracts import TemplatePublic, ModelCatalogPublic, OverviewPublic
+
 router = APIRouter(prefix="/api")
-# Process-local throttle supplements reverse-proxy throttling in production.
-_login_attempts = defaultdict(deque)
-
-
-def throttle(request):
-    key = request.client.host if request.client else "unknown"
-    now = time.time()
-    attempts = _login_attempts[key]
-    while attempts and attempts[0] < now - 300:
-        attempts.popleft()
-    if len(attempts) >= 15:
-        raise HTTPException(
-            429, "Too many sign-in attempts. Try again in five minutes."
-        )
-    attempts.append(now)
+from .throttling import throttle
 
 
 def rows(db, model, workspace, limit=200):
@@ -91,7 +87,7 @@ def timezones():
     return sorted(available_timezones())
 
 
-@router.post("/setup")
+@router.post("/setup", response_model=SessionPublic)
 def setup(
     data: Setup, request: Request, response: Response, db: Session = Depends(get_db)
 ):
@@ -127,12 +123,12 @@ def setup(
     return {"user": public_record(user), "workspace": public_record(workspace)}
 
 
-@router.post("/login")
+@router.post("/login", response_model=SessionPublic)
 def login(
     data: Login, request: Request, response: Response, db: Session = Depends(get_db)
 ):
     check_origin(request)
-    throttle(request)
+    throttle(request, data.email)
     user = db.scalar(select(User).where(User.email == data.email.lower().strip()))
     # Always perform password work to reduce account enumeration through timing.
     stored = (
@@ -153,9 +149,9 @@ def login(
 def logout(
     request: Request,
     response: Response,
-    user=Depends(current_user),
     db: Session = Depends(get_db),
 ):
+    check_origin(request)
     db.execute(
         delete(LoginSession).where(
             LoginSession.token_hash == digest(request.cookies.get(COOKIE, ""))
@@ -165,7 +161,7 @@ def logout(
     return {"ok": True}
 
 
-@router.get("/me")
+@router.get("/me", response_model=SessionPublic)
 def me(user=Depends(current_user), db: Session = Depends(get_db)):
     return {
         "user": public_record(user),
@@ -173,12 +169,12 @@ def me(user=Depends(current_user), db: Session = Depends(get_db)):
     }
 
 
-@router.get("/templates")
+@router.get("/templates", response_model=list[TemplatePublic])
 def templates(user=Depends(current_user)):
     return TEMPLATES
 
 
-@router.get("/overview")
+@router.get("/overview", response_model=OverviewPublic)
 def overview(user=Depends(current_user), db: Session = Depends(get_db)):
     result = {}
     for name, model in [
@@ -205,9 +201,28 @@ def overview(user=Depends(current_user), db: Session = Depends(get_db)):
         .select_from(StaffTask)
         .where(StaffTask.workspace_id == user.workspace_id, StaffTask.status == "open")
     )
+    for name, model in [
+        ("connections", Connection),
+        ("collections", Collection),
+        ("numbers", PhoneNumber),
+    ]:
+        result[name] = db.scalar(
+            select(func.count())
+            .select_from(model)
+            .where(model.workspace_id == user.workspace_id)
+        )
     result["recent_calls"] = [
         public_record(c, ("config", "knowledge", "variables"))
         for c in rows(db, Call, user.workspace_id, 8)
+    ]
+    call_agent_ids = {call["agent_id"] for call in result["recent_calls"]}
+    result["agent_choices"] = [
+        {"id": agent.id, "name": agent.name}
+        for agent in db.scalars(
+            select(Agent).where(
+                Agent.workspace_id == user.workspace_id, Agent.id.in_(call_agent_ids)
+            )
+        )
     ]
     result["recent_activity"] = [
         public_record(a) for a in rows(db, Audit, user.workspace_id, 8)
@@ -241,7 +256,7 @@ def credentials_valid(provider, value):
             raise HTTPException(422, "Provide both API key SID and secret")
 
 
-@router.post("/connections")
+@router.post("/connections", response_model=ConnectionPublic)
 def create_connection(
     data: ConnectionInput, user=Depends(admin), db: Session = Depends(get_db)
 ):
@@ -258,7 +273,7 @@ def create_connection(
     return public_record(item)
 
 
-@router.put("/connections/{record_id}")
+@router.put("/connections/{record_id}", response_model=ConnectionPublic)
 def rotate_connection(
     record_id: str,
     data: ConnectionInput,
@@ -333,7 +348,7 @@ async def test_connection(
     }
 
 
-@router.get("/connections/{record_id}/models")
+@router.get("/connections/{record_id}/models", response_model=ModelCatalogPublic)
 async def connection_models(
     record_id: str, user=Depends(editor), db: Session = Depends(get_db)
 ):
@@ -376,7 +391,7 @@ async def validate_agent_setup(
     return {"ready": True}
 
 
-@router.post("/agents")
+@router.post("/agents", response_model=AgentPublic)
 def create_agent(data: AgentInput, user=Depends(editor), db: Session = Depends(get_db)):
     config = validate_config(db, user.workspace_id, data.config.model_dump())
     item = Agent(
@@ -411,7 +426,7 @@ def get_agent(
     return result
 
 
-@router.put("/agents/{record_id}")
+@router.put("/agents/{record_id}", response_model=AgentPublic)
 def update_agent(
     record_id: str,
     data: AgentInput,
@@ -940,7 +955,7 @@ def users(user=Depends(admin), db: Session = Depends(get_db)):
     return [public_record(u) for u in rows(db, User, user.workspace_id)]
 
 
-@router.post("/users")
+@router.post("/users", response_model=UserPublic)
 def create_user(data: UserCreate, user=Depends(admin), db: Session = Depends(get_db)):
     # Reuse setup email normalization and password constraints.
     from pydantic import ValidationError
@@ -968,7 +983,7 @@ def create_user(data: UserCreate, user=Depends(admin), db: Session = Depends(get
     return public_record(item)
 
 
-@router.put("/workspace")
+@router.put("/workspace", response_model=WorkspacePublic)
 def update_workspace(
     data: WorkspaceInput, user=Depends(admin), db: Session = Depends(get_db)
 ):
@@ -981,3 +996,36 @@ def update_workspace(
         setattr(item, key, value)
     audit(db, user, "workspace.updated", item.id)
     return public_record(item)
+
+
+@router.post("/users/{record_id}/disable", response_model=UserPublic)
+def disable_user(record_id: str, user=Depends(admin), db: Session = Depends(get_db)):
+    db.get(Workspace, user.workspace_id, with_for_update=True)
+    target = owned(db, User, record_id, user.workspace_id)
+    if target.id == user.id:
+        raise HTTPException(409, "Ask another administrator to deactivate your account")
+    active_admins = db.scalar(
+        select(func.count())
+        .select_from(User)
+        .where(
+            User.workspace_id == user.workspace_id,
+            User.active.is_(True),
+            User.role == "admin",
+        )
+    )
+    if target.active and target.role == "admin" and active_admins <= 1:
+        raise HTTPException(409, "The workspace must retain an active administrator")
+    target.active = False
+    db.execute(delete(LoginSession).where(LoginSession.user_id == target.id))
+    audit(db, user, "user.disabled", target.id)
+    return target
+
+
+@router.post("/users/{record_id}/revoke-sessions")
+def revoke_user_sessions(
+    record_id: str, user=Depends(admin), db: Session = Depends(get_db)
+):
+    target = owned(db, User, record_id, user.workspace_id)
+    db.execute(delete(LoginSession).where(LoginSession.user_id == target.id))
+    audit(db, user, "user.sessions_revoked", target.id)
+    return {"ok": True}

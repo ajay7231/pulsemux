@@ -282,7 +282,7 @@ async def run_local():
         except Exception:
             import logging
 
-            logging.getLogger(__name__).exception("Campaign worker cycle failed")
+            logging.getLogger(__name__).error("campaign_worker_cycle_failed")
         await asyncio.sleep(15)
 
 

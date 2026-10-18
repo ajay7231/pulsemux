@@ -17,7 +17,7 @@ hospital workspace. Select your hospital timezone from the dropdown of all
 server-supported IANA timezones. The same selector appears in workspace settings
 and contact forms. The first-run form is available only until setup succeeds.
 Returning users can choose **Already have a workspace? Sign in**, or open
-http://localhost:8001/dashboard/#login directly, and use their registered email
+http://localhost:8001/dashboard/login directly, and use their registered email
 and password. Accounts belong to the database connected to this server.
 No default user or password is installed. No sample patients or credentials are
 seeded into your workspace.
@@ -240,6 +240,70 @@ allowing old ciphertext to be read while connection credentials are rotated.
 Do not remove an old encryption key before all connection records have been
 re-encrypted by rotation.
 
+### HTTPS edge and production policy
+
+Set `PUBLIC_BASE_URL` to a real HTTPS origin with DNS pointing to the deployment.
+The optional `edge` profile starts Caddy on ports 80/443 and obtains its TLS
+certificate. To start the web-facing services without enabling campaign dispatch:
+
+```sh
+docker compose --env-file YOUR_PRIVATE_ENV_FILE -f deploy/platform-compose.yml --profile edge up --build -d edge
+```
+
+This starts the edge's gateway, application, PostgreSQL and Redis dependencies;
+it does not start the scheduler or campaign worker. The full-stack command above
+also starts those outbound-capable services and should be used intentionally.
+Certificate issuance requires working DNS and inbound ports 80/443. This profile
+has been configured but is not enabled by the local development server.
+
+Production requires an HTTPS origin, encryption keys and a Redis URL. The server
+rejects unexpected Host headers and non-HTTPS application traffic. The internal
+readiness endpoint remains available to the container health check. The image
+trusts forwarded scheme/IP headers only because its backend ports are private or
+loopback-bound behind the included ingress: do not expose the backend directly.
+If using a different ingress, configure its forwarded-header trust boundary
+before exposing it.
+
+API responses and dashboard HTML use `Cache-Control: no-store`; versioned assets
+use immutable caching. The dashboard has CSP, anti-framing, MIME-sniffing,
+referrer and microphone/camera policies. Login limits are shared through Redis
+per IP and normalized account identifier; production fails closed if that limit
+cannot be applied. Keep Redis on the internal service network.
+
+### Sessions and account offboarding
+
+The dashboard restores its server session, handles expired authorization
+centrally, synchronizes login/logout between tabs, and clears account-bound
+queries and drafts on sign-out. Network failures during session restoration show
+an explicit recovery screen rather than a misleading login failure. A sign-out
+whose server result is uncertain is reported as such.
+
+Administrators can deactivate another user or revoke all of a user's sessions
+from Settings. The API prevents self-deactivation and preserves an active
+administrator. These actions are scoped to the current workspace and audited.
+HTTP authorization is checked on every request; browser voice sockets re-check
+session and role validity at least once a second and before every new call.
+
+### Routed and paginated dashboard
+
+Pages have URLs under `/dashboard/`, including `/dashboard/agents/:agentId` and
+`/dashboard/agents/:agentId/simulate`. Direct navigation and refresh use the SPA
+fallback; unknown pages have a recovery screen. Agent edits prompt before
+navigation discards unsaved work. Viewers cannot enter creation or simulator
+routes, and backend authorization remains authoritative.
+
+The dashboard uses `/api/resources/{resource}` for bounded lists. Parameters are
+`page`, `page_size` (maximum 100), `q`, `sort` and `direction`; responses contain
+`items`, `total`, `page`, `page_size` and `pages`. Search is scoped to explicit
+fields on the server. Campaign lists return grouped recipient counts rather
+than every recipient. Older list endpoints remain for compatibility; new clients
+should use the resource endpoints. The audit dialog is paginated too.
+
+Query data is scoped to the workspace, cached only in memory, cancelled when no
+longer needed, and invalidated by the affected resource after changes. Read
+failures have bounded backoff; mutations are never retried automatically. A
+mutation timeout tells the operator to inspect the record before resubmitting.
+
 ### Access and data handling
 
 - Administrators manage credentials, team access, knowledge approval, and publishing.
@@ -300,3 +364,37 @@ multilingual prompts and voices, structured free-form tool calling, scale tests,
 and a hospital-reviewed clinical acceptance suite. The existing keyword red-flag
 heuristic is not a validated triage system. A project license should be chosen
 before publishing an open-source release.
+
+
+### P2/P3 operations and diagnostics
+
+Production application startup verifies that the database Alembic revision matches
+all migration heads. It does not create extensions, tables, or indexes. Run
+`alembic -c worker-py/alembic.ini upgrade head` from the repository root before
+starting a directly managed backend. The container command runs Alembic before Uvicorn;
+for a deployment with separate migration and runtime database roles, run Alembic as
+a migration job, then override the runtime command to start Uvicorn directly. The
+migration role requires DDL privileges; the runtime role can use narrower privileges.
+Development retains automatic metadata initialization for an empty local database.
+
+Migration `0002_workspace_list_indexes` adds workspace/created-time/ID indexes for
+agents, contacts, calls, campaigns, staff tasks, and audit history. PostgreSQL builds
+these concurrently; allow migrations to finish before starting the new runtime.
+Large deployments should apply migrations with one designated migration process.
+These indexes improve the normal newest-first workspace list path; deep offset
+pagination and substring searches may still need cursor or search indexes after
+measurement.
+
+Every HTTP response includes a locally generated `X-Request-ID`. Server failures log
+that ID and duration without request paths, query strings, bodies or exception text.
+Frontend diagnostics accept only a fixed event kind, HTTP status and a 32-character
+request ID, require a session and same-origin checks, and have separate rate limits.
+Provider failures in the voice paths omit response bodies and exception values;
+utterances and TTS clauses are no longer logged. HTTP client INFO logs and Uvicorn
+access logs are disabled to avoid query-string disclosure. Review reverse-proxy
+logging policy separately before handling patient data.
+
+Frontend release checks: `npm --prefix dashboard run lint`,
+`npm --prefix dashboard run format:check`, and `npm --prefix dashboard run build`.
+The build checks TypeScript and an initial-asset gzip budget. Email/password remains
+in use; hospital SSO/MFA integration is intentionally deferred by the current product choice.

@@ -64,10 +64,10 @@ class STTStreamClient:
             if r.status_code == 200:
                 return r.json().get("text", "").strip()
             else:
-                logger.error(f"Groq Whisper error: {r.status_code} {r.text}")
+                logger.error("provider_failure provider=groq operation=stt status=%s", r.status_code)
                 return ""
         except Exception as e:
-            logger.error(f"Groq Whisper transcription exception: {e}")
+            logger.error("speech_recognition_failure")
             return ""
 
     async def start_streaming(
@@ -103,7 +103,7 @@ class STTStreamClient:
                         task.cancel()
                 return
             except Exception as e:
-                logger.error(f"Deepgram WebSocket error: {e}. Falling back to Groq / mock engine.")
+                logger.error("speech_recognition_failure")
 
         if self.groq_api_key:
             logger.info("STT: Using Groq Whisper API (whisper-large-v3-turbo).")
@@ -130,7 +130,7 @@ class STTStreamClient:
                     if transcript:
                         on_transcript(transcript, is_final)
             except Exception as e:
-                logger.error(f"Error parsing Deepgram message: {e}")
+                logger.error("speech_recognition_failure")
 
     async def _run_mock_stream(self, on_transcript: Callable[[str, bool], None]) -> None:
         """Simulates speech recognition deltas for local testing and pipeline verification."""

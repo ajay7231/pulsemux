@@ -1,18 +1,39 @@
 import { Activity, Phone, Plus, Search, Upload } from "lucide-react";
+import { lazy, Suspense } from "react";
 import { Button } from "../../components/ui";
 import { LABELS } from "../../lib/config";
 import { Page, Row } from "../../lib/types";
-import { AgentsPage } from "./AgentsPage";
-import { CallsPage } from "./CallsPage";
-import { CampaignsPage } from "./CampaignsPage";
-import { ConnectionsPage } from "./ConnectionsPage";
-import { ContactsPage } from "./ContactsPage";
-import { KnowledgePage } from "./KnowledgePage";
-import { NumbersPage } from "./NumbersPage";
-import { OverviewPage } from "./OverviewPage";
-import { SettingsPage } from "./SettingsPage";
-import { TasksPage } from "./TasksPage";
 import type { WorkspacePageProps } from "./types";
+const AgentsPage = lazy(() =>
+  import("./AgentsPage").then((m) => ({ default: m.AgentsPage })),
+);
+const CallsPage = lazy(() =>
+  import("./CallsPage").then((m) => ({ default: m.CallsPage })),
+);
+const CampaignsPage = lazy(() =>
+  import("./CampaignsPage").then((m) => ({ default: m.CampaignsPage })),
+);
+const ConnectionsPage = lazy(() =>
+  import("./ConnectionsPage").then((m) => ({ default: m.ConnectionsPage })),
+);
+const ContactsPage = lazy(() =>
+  import("./ContactsPage").then((m) => ({ default: m.ContactsPage })),
+);
+const KnowledgePage = lazy(() =>
+  import("./KnowledgePage").then((m) => ({ default: m.KnowledgePage })),
+);
+const NumbersPage = lazy(() =>
+  import("./NumbersPage").then((m) => ({ default: m.NumbersPage })),
+);
+const OverviewPage = lazy(() =>
+  import("./OverviewPage").then((m) => ({ default: m.OverviewPage })),
+);
+const SettingsPage = lazy(() =>
+  import("./SettingsPage").then((m) => ({ default: m.SettingsPage })),
+);
+const TasksPage = lazy(() =>
+  import("./TasksPage").then((m) => ({ default: m.TasksPage })),
+);
 
 export function WorkspacePage({
   page,
@@ -45,6 +66,9 @@ export function WorkspacePage({
   setSession,
   timezones,
   data,
+  pagination,
+  sort,
+  setSort,
 }: WorkspacePageProps) {
   return (
     <>
@@ -163,138 +187,174 @@ export function WorkspacePage({
           )}
         </div>
       </div>
-      {loading ? (
-        <div className="loading">
-          <span />
-          Loading your workspace…
-        </div>
-      ) : page === "overview" ? (
-        <OverviewPage
-          navigate={navigate}
-          overview={overview}
-          agents={agents}
-          run={run}
-          setCall={setCall}
-          connections={connections}
-          collections={collections}
-          numbers={numbers}
-        />
-      ) : (
-        <>
-          {page !== "settings" && (
-            <div className="list-toolbar">
-              <div className="search">
-                <Search size={16} />
-                <input
-                  aria-label="Search records"
-                  placeholder={`Search ${LABELS[page].toLowerCase()}…`}
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                />
+      <Suspense
+        fallback={
+          <div className="loading" role="status">
+            Loading page…
+          </div>
+        }
+      >
+        {loading ? (
+          <div className="loading">
+            <span />
+            Loading your workspace…
+          </div>
+        ) : page === "overview" ? (
+          <OverviewPage
+            navigate={navigate}
+            overview={overview}
+            agents={agents}
+            run={run}
+            setCall={setCall}
+            connections={connections}
+            collections={collections}
+            numbers={numbers}
+          />
+        ) : (
+          <>
+            {page !== "settings" && (
+              <div className="list-toolbar">
+                <div className="search">
+                  <Search size={16} />
+                  <input
+                    aria-label="Search records"
+                    placeholder={`Search ${LABELS[page].toLowerCase()}…`}
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                  />
+                </div>
+                <span>
+                  {pagination.total}{" "}
+                  {page === "knowledge"
+                    ? "collections"
+                    : LABELS[page].toLowerCase()}
+                </span>
+                <select
+                  aria-label="Sort records"
+                  value={sort}
+                  onChange={(event) => setSort(event.target.value)}
+                >
+                  <option value="newest">Newest first</option>
+                  <option value="oldest">Oldest first</option>
+                </select>
+                <button
+                  className="icon-button"
+                  aria-label="Refresh records"
+                  onClick={refresh}
+                >
+                  <Activity size={17} />
+                </button>
               </div>
-              <span>
-                {filtered.length}{" "}
-                {page === "knowledge"
-                  ? "collections"
-                  : LABELS[page].toLowerCase()}
-              </span>
-              <button
-                className="icon-button"
-                aria-label="Refresh records"
-                onClick={refresh}
-              >
-                <Activity size={17} />
-              </button>
-            </div>
-          )}
-          {page === "agents" && (
-            <AgentsPage
-              startModal={startModal}
-              filtered={filtered}
-              templates={templates}
-              setEditor={setEditor}
-              setAgentTab={setAgentTab}
-            />
-          )}
-          {page === "connections" && (
-            <ConnectionsPage
-              busy={busy}
-              isAdmin={isAdmin}
-              startModal={startModal}
-              run={run}
-              filtered={filtered}
-              refresh={refresh}
-              setNotice={setNotice}
-            />
-          )}
-          {page === "knowledge" && (
-            <KnowledgePage
-              run={run}
-              filtered={filtered}
-              setSelected={setSelected}
-              setDocuments={setDocuments}
-              setModal={setModal}
-            />
-          )}
-          {page === "numbers" && (
-            <NumbersPage
-              agents={agents}
-              filtered={filtered}
-              setSelected={setSelected}
-              setModal={setModal}
-            />
-          )}
-          {page === "contacts" && (
-            <ContactsPage
-              canEdit={canEdit}
-              startModal={startModal}
-              filtered={filtered}
-            />
-          )}
-          {page === "campaigns" && (
-            <CampaignsPage
-              canEdit={canEdit}
-              busy={busy}
-              run={run}
-              filtered={filtered}
-              refresh={refresh}
-              setNotice={setNotice}
-            />
-          )}
-          {page === "calls" && (
-            <CallsPage
-              agents={agents}
-              run={run}
-              setCall={setCall}
-              filtered={filtered}
-            />
-          )}
-          {page === "tasks" && (
-            <TasksPage
-              canEdit={canEdit}
-              busy={busy}
-              run={run}
-              filtered={filtered}
-              refresh={refresh}
-            />
-          )}
-          {page === "settings" && (
-            <SettingsPage
-              session={session}
-              busy={busy}
-              isAdmin={isAdmin}
-              startModal={startModal}
-              run={run}
-              setNotice={setNotice}
-              setDocuments={setDocuments}
-              setModal={setModal}
-              formSubmit={formSubmit}
-              setSession={setSession}
-              timezones={timezones}
-              data={data}
-            />
-          )}
-        </>
+            )}
+            {page === "agents" && (
+              <AgentsPage
+                startModal={startModal}
+                filtered={filtered}
+                templates={templates}
+                setEditor={setEditor}
+                setAgentTab={setAgentTab}
+              />
+            )}
+            {page === "connections" && (
+              <ConnectionsPage
+                busy={busy}
+                isAdmin={isAdmin}
+                startModal={startModal}
+                run={run}
+                filtered={filtered}
+                refresh={refresh}
+                setNotice={setNotice}
+              />
+            )}
+            {page === "knowledge" && (
+              <KnowledgePage
+                run={run}
+                filtered={filtered}
+                setSelected={setSelected}
+                setDocuments={setDocuments}
+                setModal={setModal}
+              />
+            )}
+            {page === "numbers" && (
+              <NumbersPage
+                agents={agents}
+                filtered={filtered}
+                setSelected={setSelected}
+                setModal={setModal}
+              />
+            )}
+            {page === "contacts" && (
+              <ContactsPage
+                canEdit={canEdit}
+                startModal={startModal}
+                filtered={filtered}
+              />
+            )}
+            {page === "campaigns" && (
+              <CampaignsPage
+                canEdit={canEdit}
+                busy={busy}
+                run={run}
+                filtered={filtered}
+                refresh={refresh}
+                setNotice={setNotice}
+              />
+            )}
+            {page === "calls" && (
+              <CallsPage
+                agents={agents}
+                run={run}
+                setCall={setCall}
+                filtered={filtered}
+              />
+            )}
+            {page === "tasks" && (
+              <TasksPage
+                canEdit={canEdit}
+                busy={busy}
+                run={run}
+                filtered={filtered}
+                refresh={refresh}
+              />
+            )}
+            {page === "settings" && (
+              <SettingsPage
+                session={session}
+                busy={busy}
+                isAdmin={isAdmin}
+                startModal={startModal}
+                run={run}
+                setNotice={setNotice}
+                setDocuments={setDocuments}
+                setModal={setModal}
+                formSubmit={formSubmit}
+                setSession={setSession}
+                timezones={timezones}
+                data={data}
+              />
+            )}
+          </>
+        )}
+      </Suspense>
+      {page !== "overview" && pagination.total > 0 && (
+        <nav className="pagination" aria-label="Record pages">
+          <Button
+            disabled={pagination.page <= 1 || loading}
+            onClick={() => pagination.setPage(pagination.page - 1)}
+          >
+            Previous
+          </Button>
+          <span>
+            Page {pagination.page} of {pagination.pages} · {pagination.total}{" "}
+            records
+          </span>
+          <Button
+            disabled={pagination.page >= pagination.pages || loading}
+            onClick={() => pagination.setPage(pagination.page + 1)}
+          >
+            Next
+          </Button>
+        </nav>
       )}
     </>
   );

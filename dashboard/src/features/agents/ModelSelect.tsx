@@ -1,5 +1,7 @@
-import { api } from "../../lib/api";
-import { useEffect, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { useSession } from "../../app/SessionProvider";
+import { workspaceKey } from "../../app/useWorkspaceQueries";
+import { metadataService } from "../../services/platform";
 
 export function ModelSelect({
   connectionId,
@@ -12,41 +14,22 @@ export function ModelSelect({
   value: string;
   onChange: (value: string) => void;
 }) {
-  const [result, setResult] = useState<{
-    connection: string;
-    models: { id: string; name: string }[];
-  } | null>(null);
-  const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [retry, setRetry] = useState(0);
-  useEffect(() => {
-    setResult(null);
-    setError("");
-    if (!connectionId) {
-      setLoading(false);
-      return;
-    }
-    const controller = new AbortController();
-    setLoading(true);
-    api<{ models: { id: string; name: string }[] }>(
-      `/connections/${encodeURIComponent(connectionId)}/models`,
-      "GET",
-      undefined,
-      { signal: controller.signal },
-    )
-      .then((data) => {
-        if (!controller.signal.aborted)
-          setResult({ connection: connectionId, models: data.models });
-      })
-      .catch((error) => {
-        if (!controller.signal.aborted) setError(error.message);
-      })
-      .finally(() => {
-        if (!controller.signal.aborted) setLoading(false);
-      });
-    return () => controller.abort();
-  }, [connectionId, revision, retry]);
-  const models = result?.connection === connectionId ? result.models : [];
+  const { session } = useSession();
+  const catalog = useQuery({
+    queryKey: [
+      ...workspaceKey(session!.workspace.id),
+      "models",
+      connectionId,
+      revision,
+    ],
+    enabled: !!connectionId,
+    staleTime: 300000,
+    queryFn: ({ signal }) => metadataService.models(connectionId!, signal),
+  });
+  const result = catalog.data;
+  const loading = !!connectionId && catalog.isFetching;
+  const error = catalog.error?.message || "";
+  const models = result?.models || [];
   const unavailable = !!value && !models.some((model) => model.id === value);
   return (
     <div className="model-picker">
@@ -109,7 +92,7 @@ export function ModelSelect({
           type="button"
           className="text-button"
           disabled={loading}
-          onClick={() => setRetry((value) => value + 1)}
+          onClick={() => void catalog.refetch()}
         >
           {error ? "Retry loading models" : "Refresh models"}
         </button>

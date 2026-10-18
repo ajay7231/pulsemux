@@ -1,7 +1,6 @@
 import { Pause, Play } from "lucide-react";
 import { Badge, Button, Empty } from "../../components/ui";
 import { api } from "../../lib/api";
-import { Row } from "../../lib/types";
 import type { WorkspacePageProps } from "./types";
 type Props = Pick<
   WorkspacePageProps,
@@ -25,27 +24,20 @@ export function CampaignsPage({
               <Badge value={c.status} />
             </div>
             <p>
-              {c.recipients.length} contacts · Up to {c.config.max_attempts}{" "}
+              {c.recipient_count} contacts · Up to {c.config.max_attempts}{" "}
               attempts · {c.config.window_start}:00–{c.config.window_end}
               :00 local time
             </p>
             <div className="progress-track">
               <div
                 style={{
-                  width: `${c.recipients.length ? (c.recipients.filter((r: Row) => ["completed", "failed", "suppressed"].includes(r.status)).length / c.recipients.length) * 100 : 0}%`,
+                  width: `${c.recipient_count ? ((c.completed_count + c.failed_count + c.suppressed_count) / c.recipient_count) * 100 : 0}%`,
                 }}
               />
             </div>
             <small>
-              {c.recipients.filter((r: Row) => r.status === "completed").length}{" "}
-              completed ·{" "}
-              {c.recipients.filter((r: Row) => r.status === "failed").length}{" "}
-              failed ·{" "}
-              {
-                c.recipients.filter((r: Row) => r.status === "suppressed")
-                  .length
-              }{" "}
-              suppressed
+              {c.completed_count} completed · {c.failed_count} failed ·{" "}
+              {c.suppressed_count} suppressed
             </small>
           </div>
           <div className="actions">

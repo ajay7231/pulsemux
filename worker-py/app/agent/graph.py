@@ -115,7 +115,7 @@ class ClinicalTriageGraph:
         self.groq_api_key = groq_api_key or os.getenv("GROQ_API_KEY")
         self.groq_model = os.getenv("GROQ_MODEL", "qwen/qwen3.8-27b")
         logger.info(
-            f"Initialized ClinicalTriageGraph (Redis: {redis_url or 'in-memory'}, "
+            f"Initialized ClinicalTriageGraph (Redis: {'configured' if redis_url else 'in-memory'}, "
             f"Groq: {'Active (' + self.groq_model + ')' if self.groq_api_key else 'Offline/Rule-based'})"
         )
 
@@ -196,10 +196,10 @@ class ClinicalTriageGraph:
                 if r.status_code == 200:
                     assistant_text = r.json()["choices"][0]["message"]["content"].strip()
                 else:
-                    logger.error(f"Groq API error {r.status_code}: {r.text}")
+                    logger.error("provider_failure provider=groq operation=llm status=%s", r.status_code)
                     assistant_text = "I have noted your symptoms. Let me connect you with our clinical care team."
         except Exception as e:
-            logger.error(f"Groq request failed: {e}")
+            logger.error("provider_failure provider=groq operation=llm")
             assistant_text = "I have noted your symptoms. Let me connect you with our clinical care team."
 
         node_name = "EMERGENCY_ESCALATION" if is_emergency else "TRIAGE_SYMPTOMS"

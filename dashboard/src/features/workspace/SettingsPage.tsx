@@ -1,6 +1,8 @@
 import { ArrowRight, Plus } from "lucide-react";
+import { useSession } from "../../app/SessionProvider";
 import { Badge, Button, Field, TimezoneSelect } from "../../components/ui";
 import { api } from "../../lib/api";
+import { userService } from "../../services/platform";
 import type { WorkspacePageProps } from "./types";
 type Props = Pick<
   WorkspacePageProps,
@@ -24,13 +26,13 @@ export function SettingsPage({
   startModal,
   run,
   setNotice,
-  setDocuments,
   setModal,
   formSubmit,
   setSession,
   timezones,
   data,
 }: Props) {
+  const auth = useSession();
   return (
     <div className="settings-grid">
       <section className="card padded">
@@ -92,7 +94,39 @@ export function SettingsPage({
               <strong>{u.name}</strong>
               <small>{u.email}</small>
             </div>
-            <Badge value={u.role} />
+            <Badge value={u.active ? u.role : "disabled"} />
+            {isAdmin && (
+              <div className="actions">
+                <Button
+                  disabled={busy}
+                  onClick={() =>
+                    void run(async () => {
+                      await userService.revokeSessions(u.id);
+                      if (u.id === session.user.id) await auth.logout();
+                      else
+                        setNotice(
+                          "All sessions revoked. The user must sign in again.",
+                        );
+                    })
+                  }
+                >
+                  Sign out all sessions
+                </Button>
+                {u.active && u.id !== session.user.id && (
+                  <Button
+                    disabled={busy}
+                    onClick={() =>
+                      void run(async () => {
+                        await userService.disable(u.id);
+                        setNotice("Account disabled and sessions revoked.");
+                      })
+                    }
+                  >
+                    Deactivate user
+                  </Button>
+                )}
+              </div>
+            )}
           </div>
         ))}
         <p className="muted">
@@ -103,7 +137,6 @@ export function SettingsPage({
           <Button
             onClick={() =>
               void run(async () => {
-                setDocuments(await api("/audit"));
                 setModal("audit");
               })
             }

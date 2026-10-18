@@ -1,5 +1,6 @@
 import { AudioLines, X } from "lucide-react";
-import React, { useEffect, type ReactNode } from "react";
+import React, { useLayoutEffect, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 export function Badge({ value }: { value: string }) {
   return (
     <span
@@ -112,60 +113,41 @@ export function Modal({
   onClose: () => void;
   wide?: boolean;
 }) {
-  const panel = React.useRef<HTMLElement>(null);
-  const close = React.useRef(onClose);
-  close.current = onClose;
-  useEffect(() => {
+  const panel = React.useRef<HTMLDialogElement>(null);
+  const titleId = React.useId();
+  const subtitleId = React.useId();
+  useLayoutEffect(() => {
     const previous = document.activeElement as HTMLElement | null;
     const oldOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
-    const focusable = () =>
-      Array.from(
-        panel.current?.querySelectorAll<HTMLElement>(
-          "button:not(:disabled), input:not(:disabled), select:not(:disabled), textarea:not(:disabled), a[href], iframe",
-        ) || [],
-      );
-    focusable()[0]?.focus();
-    const listener = (event: KeyboardEvent) => {
-      if (event.key === "Escape") close.current();
-      if (event.key === "Tab") {
-        const elements = focusable();
-        const index = elements.indexOf(document.activeElement as HTMLElement);
-        if (
-          index < 0 ||
-          (!event.shiftKey && index === elements.length - 1) ||
-          (event.shiftKey && index === 0)
-        ) {
-          event.preventDefault();
-          (event.shiftKey ? elements.at(-1) : elements[0])?.focus();
-        }
-      }
-    };
-    window.addEventListener("keydown", listener);
+    const dialog = panel.current!;
+    // Native top-layer dialogs provide background inertness and nested focus containment.
+    dialog.showModal();
     return () => {
-      window.removeEventListener("keydown", listener);
+      dialog.close();
       document.body.style.overflow = oldOverflow;
-      previous?.focus();
+      if (previous?.isConnected) previous.focus();
     };
   }, []);
-  return (
-    <div
-      className="overlay"
+  return createPortal(
+    <dialog
+      ref={panel}
+      className="overlay modal-layer"
+      aria-labelledby={titleId}
+      aria-describedby={subtitle ? subtitleId : undefined}
+      onCancel={(event) => {
+        event.preventDefault();
+        onClose();
+      }}
       onMouseDown={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
     >
-      <section
-        ref={panel}
-        role="dialog"
-        aria-modal="true"
-        aria-label={title}
-        className={"modal " + (wide ? "wide" : "")}
-      >
+      <section className={"modal " + (wide ? "wide" : "")}>
         <header>
           <div>
-            <h2>{title}</h2>
-            {subtitle && <p>{subtitle}</p>}
+            <h2 id={titleId}>{title}</h2>
+            {subtitle && <p id={subtitleId}>{subtitle}</p>}
           </div>
           <button
             className="icon-button"
@@ -177,7 +159,8 @@ export function Modal({
         </header>
         {children}
       </section>
-    </div>
+    </dialog>,
+    document.body,
   );
 }
 export function TimezoneSelect({

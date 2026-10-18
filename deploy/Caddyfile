@@ -1,0 +1,4 @@
+{$PUBLIC_BASE_URL} {
+    encode zstd gzip
+    reverse_proxy gateway:8080
+}

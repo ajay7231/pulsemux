@@ -1,6 +1,6 @@
 import { ArrowRight, BookOpen } from "lucide-react";
 import { Empty } from "../../components/ui";
-import { api } from "../../lib/api";
+import { operationService } from "../../services/platform";
 import type { WorkspacePageProps } from "./types";
 type Props = Pick<
   WorkspacePageProps,
@@ -29,7 +29,7 @@ export function KnowledgePage({
             onClick={() =>
               void run(async () => {
                 setSelected(c);
-                setDocuments(await api(`/collections/${c.id}/documents`));
+                setDocuments(await operationService.documents(c.id));
                 setModal("documents");
               })
             }

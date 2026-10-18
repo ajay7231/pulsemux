@@ -11,8 +11,8 @@ import {
   ShieldCheck,
 } from "lucide-react";
 import { Button, Empty } from "../../components/ui";
-import { api } from "../../lib/api";
 import { Page } from "../../lib/types";
+import { operationService } from "../../services/platform";
 import { CallTable } from "../calls/CallTable";
 import type { WorkspacePageProps } from "./types";
 type Props = Pick<
@@ -32,9 +32,6 @@ export function OverviewPage({
   agents,
   run,
   setCall,
-  connections,
-  collections,
-  numbers,
 }: Props) {
   return (
     <>
@@ -134,7 +131,7 @@ export function OverviewPage({
               rows={overview.recent_calls}
               agents={agents}
               open={(id) =>
-                void run(async () => setCall(await api("/calls/" + id)))
+                void run(async () => setCall(await operationService.call(id)))
               }
             />
           ) : (
@@ -155,10 +152,10 @@ export function OverviewPage({
             for your team.
           </h2>
           {[
-            [connections.length > 0, "Connect your providers", "connections"],
-            [agents.length > 0, "Create your first agent", "agents"],
-            [collections.length > 0, "Add hospital knowledge", "knowledge"],
-            [numbers.length > 0, "Connect a phone number", "numbers"],
+            [overview.connections > 0, "Connect your providers", "connections"],
+            [overview.agents > 0, "Create your first agent", "agents"],
+            [overview.collections > 0, "Add hospital knowledge", "knowledge"],
+            [overview.numbers > 0, "Connect a phone number", "numbers"],
           ].map(([done, label, target], i) => (
             <button key={i} onClick={() => navigate(target as Page)}>
               <span className={done ? "step-done" : "step-circle"}>

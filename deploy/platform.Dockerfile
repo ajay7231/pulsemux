@@ -3,6 +3,7 @@ WORKDIR /source/dashboard
 COPY dashboard/package*.json ./
 RUN npm ci --no-audit --no-fund
 COPY dashboard/ ./
+COPY worker-py/web/call.js worker-py/web/call.d.ts /source/worker-py/web/
 RUN npm run build
 
 FROM python:3.12-slim
@@ -15,4 +16,4 @@ ENV PYTHONUNBUFFERED=1 PLATFORM_ENV=production PLATFORM_DATA_DIR=/data
 RUN useradd --uid 10001 --create-home platform && mkdir -p /data && chown platform:platform /data
 USER platform
 EXPOSE 8000
-CMD ["sh", "-c", "alembic upgrade head && uvicorn app.web_server:app --host 0.0.0.0 --port 8000"]
+CMD ["sh", "-c", "alembic upgrade head && uvicorn app.web_server:app --host 0.0.0.0 --port 8000 --proxy-headers --forwarded-allow-ips='*'"]

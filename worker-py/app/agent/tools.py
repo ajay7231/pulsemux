@@ -74,7 +74,7 @@ def find_available_slots(specialty: Optional[str] = None) -> List[Dict[str, str]
 
 def book_appointment_slot(patient_id: str, slot_id: str) -> Dict[str, Any]:
     """Confirms booking reservation for patient in EHR."""
-    logger.info(f"[EHR] Booked appointment slot {slot_id} for patient {patient_id}")
+    logger.info("appointment_booking_completed")
     return {
         "status": "CONFIRMED",
         "confirmation_code": f"CONF-{datetime.datetime.now().strftime('%Y%m%d%H%M')}",

@@ -2,6 +2,7 @@ import time
 import uuid
 from sqlalchemy import (
     Column,
+    Index,
     String,
     Text,
     Float,
@@ -217,3 +218,13 @@ class Audit(Owned, Base):
     action = Column(String(80), nullable=False)
     target_id = Column(String(64))
     detail = Column(JSON, default=dict, nullable=False)
+
+
+# Keep local-development metadata aligned with migration 0002. Production uses Alembic.
+for _model in (Agent, Contact, Call, Campaign, StaffTask, Audit):
+    Index(
+        f"ix_{_model.__tablename__}_workspace_created_id",
+        _model.workspace_id,
+        _model.created_at.desc(),
+        _model.id,
+    )

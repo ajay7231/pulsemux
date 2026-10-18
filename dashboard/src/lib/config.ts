@@ -11,7 +11,8 @@ import {
   Settings,
   Users,
 } from "lucide-react";
-import type { Page, Row } from "./types";
+import type { AgentConfig } from "../contracts/schemas";
+import type { Page } from "./types";
 export const NAV: [Page, string, typeof Activity][] = [
   ["overview", "Overview", LayoutDashboard],
   ["agents", "Agents", Bot],
@@ -49,7 +50,7 @@ export const VOICES: Record<string, string> = {
     ]),
   ),
 };
-export const DEFAULT_CONFIG: Row = {
+export const DEFAULT_CONFIG: AgentConfig = {
   template: "reception",
   department: "Reception",
   language: "en",

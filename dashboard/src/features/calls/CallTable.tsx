@@ -33,7 +33,9 @@ export function CallTable({
             <tr key={c.id}>
               <td>
                 <strong>
-                  {agents.find((a) => a.id === c.agent_id)?.name || "Agent"}
+                  {c.agent_name ||
+                    agents.find((a) => a.id === c.agent_id)?.name ||
+                    "Agent"}
                 </strong>
                 <small>
                   {c.to_number || c.from_number || "Browser conversation"}

@@ -1,5 +1,5 @@
 import { Empty } from "../../components/ui";
-import { api } from "../../lib/api";
+import { operationService } from "../../services/platform";
 import { CallTable } from "../calls/CallTable";
 import type { WorkspacePageProps } from "./types";
 type Props = Pick<
@@ -14,7 +14,7 @@ export function CallsPage({ agents, run, setCall, filtered }: Props) {
           rows={filtered}
           agents={agents}
           open={(id) =>
-            void run(async () => setCall(await api("/calls/" + id)))
+            void run(async () => setCall(await operationService.call(id)))
           }
         />
       ) : (

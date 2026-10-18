@@ -1,29 +1,19 @@
-import {
-  Activity,
-  ArrowRight,
-  CalendarClock,
-  Check,
-  FileText,
-  Phone,
-  Plus,
-  ShieldCheck,
-  Upload,
-} from "lucide-react";
+import { ArrowRight, CalendarClock, Check } from "lucide-react";
 import React, { type FormEvent } from "react";
-import {
-  Badge,
-  Button,
-  Empty,
-  Field,
-  Modal,
-  TimezoneSelect,
-} from "../../components/ui";
+import { Button, Field, Modal } from "../../components/ui";
+import type { ConfigUpdate, Session } from "../../contracts/schemas";
 import { api } from "../../lib/api";
-import { date } from "../../lib/format";
 import { Page, Row } from "../../lib/types";
+import { connectionService, operationService } from "../../services/platform";
+import { AuditLog } from "./AuditLog";
+import { ConnectionFields } from "./ConnectionFields";
+import { ContactFields } from "./ContactFields";
+import { DocumentsDialog } from "./DocumentsDialog";
+import { ImportContactsDialog } from "./ImportContactsDialog";
+import { OutreachFields } from "./OutreachFields";
 
 type WorkspaceDialogProps = {
-  draft: Row;
+  initial: Row;
   selected: Row | null;
   modal: string;
   setModal: React.Dispatch<React.SetStateAction<string>>;
@@ -31,26 +21,17 @@ type WorkspaceDialogProps = {
   templates: Row[];
   newAgent: (template?: Row) => void;
   formSubmit: (fn: () => Promise<void>) => (event: FormEvent) => void;
-  cf: (key: string, value: any) => void;
+  cf: ConfigUpdate;
   setConnections: React.Dispatch<React.SetStateAction<Row[]>>;
-  setDraft: React.Dispatch<React.SetStateAction<Row>>;
   saveDone: (message: string) => void;
   setDocuments: React.Dispatch<React.SetStateAction<Row[]>>;
   setNotice: React.Dispatch<React.SetStateAction<string>>;
-  session: Row;
+  session: Session;
   navigate: (next: Page) => void;
-  input: (key: string, type?: string, required?: boolean) => React.JSX.Element;
   connections: Row[];
-  select: (
-    key: string,
-    items: Row[],
-    label?: string,
-    empty?: string,
-  ) => React.JSX.Element;
   agents: Row[];
   timezones: string[];
   numbers: Row[];
-  contacts: Row[];
   busy: boolean;
   run: (fn: () => Promise<void>) => Promise<void>;
   canEdit: boolean;
@@ -59,7 +40,7 @@ type WorkspaceDialogProps = {
   refresh: () => void;
 };
 export function WorkspaceDialog({
-  draft,
+  initial,
   selected,
   modal,
   setModal,
@@ -69,19 +50,15 @@ export function WorkspaceDialog({
   formSubmit,
   cf,
   setConnections,
-  setDraft,
   saveDone,
   setDocuments,
   setNotice,
   session,
   navigate,
-  input,
   connections,
-  select,
   agents,
   timezones,
   numbers,
-  contacts,
   busy,
   run,
   canEdit,
@@ -89,6 +66,35 @@ export function WorkspaceDialog({
   isAdmin,
   refresh,
 }: WorkspaceDialogProps) {
+  const [draft, setDraft] = React.useState<Row>(() => structuredClone(initial));
+  const input = (key: string, type = "text", required = true) => (
+    <input
+      type={type}
+      required={required}
+      value={draft[key] ?? ""}
+      onChange={(e) => setDraft({ ...draft, [key]: e.target.value })}
+    />
+  );
+  const select = (
+    key: string,
+    items: Row[],
+    label = "name",
+    empty = "Choose…",
+  ) => (
+    <select
+      required
+      value={draft[key] ?? ""}
+      onChange={(e) => setDraft({ ...draft, [key]: e.target.value })}
+    >
+      <option value="">{empty}</option>
+      {items.map((row) => (
+        <option key={row.id} value={row.id}>
+          {row[label]}
+        </option>
+      ))}
+    </select>
+  );
+
   return (
     <Modal
       title={
@@ -159,7 +165,7 @@ export function WorkspaceDialog({
           className="modal-form"
           onSubmit={formSubmit(async () => {
             if (modal === "connection") {
-              const credentials =
+              const credentials: Record<string, string> =
                 draft.provider === "twilio"
                   ? {
                       account_sid: draft.account_sid,
@@ -172,10 +178,9 @@ export function WorkspaceDialog({
                         : {}),
                     }
                   : { api_key: draft.api_key };
-              const savedConnection = await api(
-                "/connections" + (draft.id ? "/" + draft.id : ""),
-                draft.id ? "PUT" : "POST",
+              const savedConnection = await connectionService.save(
                 { name: draft.name, provider: draft.provider, credentials },
+                draft.id,
               );
               if (draft._agentField) {
                 cf(draft._agentField, savedConnection.id);
@@ -202,7 +207,7 @@ export function WorkspaceDialog({
                 title: draft.title,
                 content: draft.content,
               });
-              setDocuments(await api(`/collections/${selected!.id}/documents`));
+              setDocuments(await operationService.documents(selected!.id));
               setModal("documents");
               setNotice(
                 "Document saved as draft. An administrator must approve it.",
@@ -241,6 +246,8 @@ export function WorkspaceDialog({
               saveDone("Contact saved");
             }
             if (modal === "campaign") {
+              if (!draft.contact_ids?.length)
+                throw new Error("Select at least one eligible contact.");
               await api("/campaigns", "POST", {
                 ...draft,
                 starts_at: new Date(draft.starts_at).getTime() / 1000,
@@ -248,7 +255,13 @@ export function WorkspaceDialog({
               saveDone("Campaign created as draft. Review it before starting.");
             }
             if (modal === "outbound") {
-              const result = await api("/calls/outbound", "POST", draft);
+              if (!draft.contact_id)
+                throw new Error("Select an eligible contact.");
+              const result = await operationService.outbound({
+                agent_id: draft.agent_id,
+                phone_number_id: draft.phone_number_id,
+                contact_id: draft.contact_id,
+              });
               saveDone(result.error || "Call requested");
               navigate("calls");
             }
@@ -259,60 +272,7 @@ export function WorkspaceDialog({
           })}
         >
           {modal === "connection" && (
-            <>
-              <Field label="Connection name">{input("name")}</Field>
-              <Field label="Provider">
-                <select
-                  disabled={!!draft.id}
-                  value={draft.provider}
-                  onChange={(e) =>
-                    setDraft({
-                      name: draft.name,
-                      provider: e.target.value,
-                      _agentField: draft._agentField,
-                      _providers: draft._providers,
-                    })
-                  }
-                >
-                  {(
-                    draft._providers || ["deepgram", "groq", "openai", "twilio"]
-                  ).map((p: string) => (
-                    <option key={p} value={p}>
-                      {p === "openai"
-                        ? "OpenAI"
-                        : p[0].toUpperCase() + p.slice(1)}
-                    </option>
-                  ))}
-                </select>
-              </Field>
-              {draft.provider === "twilio" ? (
-                <>
-                  <Field label="Account SID">{input("account_sid")}</Field>
-                  <Field
-                    label="Auth Token"
-                    hint="Required for signed webhook verification."
-                  >
-                    {input("auth_token", "password")}
-                  </Field>
-                  <Field label="API key SID (optional)">
-                    {input("api_key_sid", "text", false)}
-                  </Field>
-                  <Field label="API key secret (optional)">
-                    {input("api_key_secret", "password", false)}
-                  </Field>
-                </>
-              ) : (
-                <Field label="API key">{input("api_key", "password")}</Field>
-              )}
-              <div className="info-panel">
-                <ShieldCheck size={20} />
-                <p>
-                  Encrypted before storage. Saved credentials cannot be revealed
-                  in the dashboard. Rotating a key replaces it for future
-                  requests.
-                </p>
-              </div>
-            </>
+            <ConnectionFields draft={draft} input={input} setDraft={setDraft} />
           )}
           {modal === "collection" && (
             <>
@@ -381,159 +341,24 @@ export function WorkspaceDialog({
             </>
           )}
           {modal === "contact" && (
-            <>
-              <div className="form-grid">
-                <Field label="Name">{input("name")}</Field>
-                <Field label="Phone number" hint="Include + and country code.">
-                  {input("phone", "tel")}
-                </Field>
-              </div>
-              <Field label="Timezone">
-                <TimezoneSelect
-                  zones={timezones}
-                  value={draft.timezone || session.workspace.timezone}
-                  onChange={(e) =>
-                    setDraft({ ...draft, timezone: e.target.value })
-                  }
-                />
-              </Field>
-              <Field
-                label="Agent variables (JSON)"
-                hint='Example: {"appointment_date":"20 October","appointment_time":"10:00 AM"}'
-              >
-                <textarea
-                  rows={4}
-                  value={draft.variables || "{}"}
-                  onChange={(e) =>
-                    setDraft({ ...draft, variables: e.target.value })
-                  }
-                />
-              </Field>
-              <label className="checkbox-line">
-                <input
-                  type="checkbox"
-                  checked={!!draft.consent}
-                  onChange={(e) =>
-                    setDraft({ ...draft, consent: e.target.checked })
-                  }
-                />
-                Permission to receive automated calls has been recorded
-              </label>
-              <label className="checkbox-line">
-                <input
-                  type="checkbox"
-                  checked={!!draft.opted_out}
-                  onChange={(e) =>
-                    setDraft({ ...draft, opted_out: e.target.checked })
-                  }
-                />
-                Contact has opted out of automated calls
-              </label>
-            </>
+            <ContactFields
+              draft={draft}
+              input={input}
+              setDraft={setDraft}
+              timezones={timezones}
+              session={session}
+            />
           )}
           {(modal === "campaign" || modal === "outbound") && (
-            <>
-              {modal === "campaign" && (
-                <Field label="Campaign name">{input("name")}</Field>
-              )}
-              <Field label="Published agent">
-                {select(
-                  "agent_id",
-                  agents.filter((a) => a.status === "published"),
-                )}
-              </Field>
-              <Field label="Outbound caller ID">
-                {select(
-                  "phone_number_id",
-                  numbers.map((n) => ({ ...n, name: n.number })),
-                )}
-              </Field>
-              {modal === "outbound" ? (
-                <Field label="Contact">
-                  {select(
-                    "contact_id",
-                    contacts.filter((c) => c.consent && !c.opted_out),
-                  )}
-                </Field>
-              ) : (
-                <>
-                  <Field label="Start at (your browser timezone)">
-                    {input("starts_at", "datetime-local")}
-                  </Field>
-                  <div className="form-grid">
-                    {[
-                      ["window_start", "Calling window starts (hour)"],
-                      ["window_end", "Calling window ends (hour)"],
-                      ["concurrency", "Concurrent calls"],
-                      ["max_attempts", "Maximum attempts"],
-                      ["retry_minutes", "Retry delay (minutes)"],
-                    ].map(([key, label]) => (
-                      <Field key={key} label={label}>
-                        <input
-                          type="number"
-                          required
-                          value={draft[key]}
-                          onChange={(e) =>
-                            setDraft({
-                              ...draft,
-                              [key]: Number(e.target.value),
-                            })
-                          }
-                        />
-                      </Field>
-                    ))}
-                  </div>
-                  <Field label="Audience">
-                    <div className="audience-list">
-                      {contacts.length ? (
-                        contacts.map((c) => (
-                          <label key={c.id} className="checkbox-line">
-                            <input
-                              type="checkbox"
-                              disabled={!c.consent || c.opted_out}
-                              checked={
-                                draft.contact_ids?.includes(c.id) || false
-                              }
-                              onChange={(e) =>
-                                setDraft({
-                                  ...draft,
-                                  contact_ids: e.target.checked
-                                    ? [...draft.contact_ids, c.id]
-                                    : draft.contact_ids.filter(
-                                        (id: string) => id !== c.id,
-                                      ),
-                                })
-                              }
-                            />
-                            {c.name}
-                            <small>
-                              {c.phone}
-                              {!c.consent || c.opted_out
-                                ? " · not eligible"
-                                : ""}
-                            </small>
-                          </label>
-                        ))
-                      ) : (
-                        <p>Add contacts before creating a campaign.</p>
-                      )}
-                    </div>
-                  </Field>
-                  <p className="muted">
-                    Calling windows use each contact’s timezone. Consent and
-                    opt-out are rechecked before every attempt.
-                  </p>
-                </>
-              )}
-              <div className="info-panel">
-                <Phone size={20} />
-                <p>
-                  {modal === "outbound"
-                    ? "Submitting this form places a real call through your Twilio account."
-                    : "Campaigns are saved as drafts. Start them from the campaign list when ready."}
-                </p>
-              </div>
-            </>
+            <OutreachFields
+              modal={modal}
+              input={input}
+              select={select}
+              agents={agents}
+              numbers={numbers}
+              draft={draft}
+              setDraft={setDraft}
+            />
           )}
           {modal === "user" && (
             <>
@@ -573,205 +398,29 @@ export function WorkspaceDialog({
         </form>
       )}
       {modal === "import" && (
-        <div className="modal-content">
-          <p>
-            CSV headers: <strong>name, phone, consent, timezone</strong>.
-            Additional columns become agent variables. Consent must explicitly
-            be true, yes, or 1; missing consent defaults to false. Existing
-            phone numbers are skipped.
-          </p>
-          <label className="button">
-            <Upload size={16} />
-            Choose CSV
-            <input
-              type="file"
-              accept=".csv"
-              hidden
-              onChange={(e) => {
-                const file = e.target.files?.[0];
-                if (file)
-                  void run(async () => {
-                    const form = new FormData();
-                    form.append("file", file);
-                    const result = await api(
-                      "/contacts/import-preview",
-                      "POST",
-                      form,
-                    );
-                    setDraft(result);
-                  });
-              }}
-            />
-          </label>
-          {draft.contacts && (
-            <>
-              <p style={{ marginTop: 20 }}>
-                {draft.contacts.length} valid contacts · {draft.errors.length}{" "}
-                invalid rows
-              </p>
-              {draft.errors.map((e: Row) => (
-                <p key={e.line} className="muted">
-                  Line {e.line}: {e.message}
-                </p>
-              ))}
-              <div className="audience-list">
-                {draft.contacts.slice(0, 20).map((c: Row, i: number) => (
-                  <div className="checkbox-line" key={i}>
-                    {c.name}
-                    <small>
-                      {c.phone} · {c.consent ? "consented" : "no consent"}
-                    </small>
-                  </div>
-                ))}
-              </div>
-              <div className="modal-footer">
-                <Button onClick={() => setModal("")}>Cancel</Button>
-                <Button
-                  kind="primary"
-                  disabled={
-                    busy || !draft.contacts.length || draft.errors.length > 0
-                  }
-                  onClick={() =>
-                    void run(async () => {
-                      const result = await api(
-                        "/contacts/import",
-                        "POST",
-                        draft.contacts,
-                      );
-                      saveDone(
-                        `${result.imported} contacts imported; ${result.duplicates} existing numbers skipped`,
-                      );
-                    })
-                  }
-                >
-                  Import {draft.contacts.length} contacts
-                </Button>
-              </div>
-            </>
-          )}
-        </div>
+        <ImportContactsDialog
+          draft={draft}
+          setDraft={setDraft}
+          run={run}
+          saveDone={saveDone}
+          setModal={setModal}
+          busy={busy}
+        />
       )}
       {modal === "documents" && (
-        <div className="modal-content">
-          <div className="document-actions">
-            {canEdit && (
-              <>
-                <Button
-                  onClick={() => {
-                    setDraft({});
-                    setModal("document");
-                  }}
-                >
-                  <Plus size={16} />
-                  Add text
-                </Button>
-                <label className="button">
-                  <Upload size={16} />
-                  Upload file
-                  <input
-                    type="file"
-                    accept=".pdf,.txt,.md,.csv"
-                    hidden
-                    onChange={(e) => {
-                      const file = e.target.files?.[0];
-                      if (file)
-                        void run(async () => {
-                          const form = new FormData();
-                          form.append("file", file);
-                          await api(
-                            `/collections/${selected!.id}/upload`,
-                            "POST",
-                            form,
-                          );
-                          setDocuments(
-                            await api(`/collections/${selected!.id}/documents`),
-                          );
-                          setNotice("Document uploaded as draft");
-                        });
-                    }}
-                  />
-                </label>
-              </>
-            )}
-            <span className="muted">PDF, TXT, MD, CSV · up to 5 MB</span>
-          </div>
-          {documents.length ? (
-            documents.map((d) => (
-              <div className="document-row" key={d.id}>
-                <FileText size={22} />
-                <div>
-                  <strong>{d.title}</strong>
-                  <p>{d.content.slice(0, 160)}…</p>
-                  <small>
-                    {d.content.length.toLocaleString()} characters ·{" "}
-                    {date(d.created_at)}
-                  </small>
-                </div>
-                <Badge value={d.status} />
-                {isAdmin && (
-                  <div className="row-actions">
-                    {canEdit && selected?.embedding_connection_id && (
-                      <button
-                        disabled={busy}
-                        onClick={() =>
-                          void run(async () => {
-                            const result = await api(
-                              `/documents/${d.id}/index`,
-                              "POST",
-                            );
-                            setNotice(
-                              `${result.indexed_chunks} chunks indexed for semantic search`,
-                            );
-                          })
-                        }
-                      >
-                        Index semantic
-                      </button>
-                    )}
-                    {d.status === "draft" && (
-                      <button
-                        onClick={() =>
-                          void run(async () => {
-                            await api(`/documents/${d.id}/approve`, "POST");
-                            setDocuments(
-                              await api(
-                                `/collections/${selected!.id}/documents`,
-                              ),
-                            );
-                          })
-                        }
-                      >
-                        Approve
-                      </button>
-                    )}
-                    {d.status !== "archived" && (
-                      <button
-                        onClick={() =>
-                          void run(async () => {
-                            await api(`/documents/${d.id}/archive`, "POST");
-                            setDocuments(
-                              await api(
-                                `/collections/${selected!.id}/documents`,
-                              ),
-                            );
-                            refresh();
-                          })
-                        }
-                      >
-                        Archive
-                      </button>
-                    )}
-                  </div>
-                )}
-              </div>
-            ))
-          ) : (
-            <Empty title="This collection is ready for its first document">
-              Add reference text or upload a file. Documents require approval
-              before agents can use them.
-            </Empty>
-          )}
-        </div>
+        <DocumentsDialog
+          canEdit={canEdit}
+          setDraft={setDraft}
+          setModal={setModal}
+          run={run}
+          selected={selected}
+          setDocuments={setDocuments}
+          setNotice={setNotice}
+          documents={documents}
+          isAdmin={isAdmin}
+          busy={busy}
+          refresh={refresh}
+        />
       )}
       {modal === "number-help" && (
         <div className="modal-content">
@@ -790,17 +439,7 @@ export function WorkspaceDialog({
           </p>
         </div>
       )}
-      {modal === "audit" && (
-        <div className="modal-content audit-list">
-          {documents.map((d) => (
-            <div key={d.id}>
-              <Activity size={16} />
-              <strong>{d.action}</strong>
-              <span>{date(d.created_at)}</span>
-            </div>
-          ))}
-        </div>
-      )}
+      {modal === "audit" && <AuditLog />}
       {modal === "help" && (
         <div className="modal-content">
           <h3>From configuration to conversation</h3>

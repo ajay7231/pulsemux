@@ -1,13 +1,53 @@
-import { FormEvent, useEffect, useState } from "react";
-import { AgentEditor } from "./features/agents/AgentEditor";
-import { AuthPage } from "./features/auth/AuthPage";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  FormEvent,
+  lazy,
+  Suspense,
+  useEffect,
+  useRef,
+  useState,
+  type Dispatch,
+  type SetStateAction,
+} from "react";
+import {
+  Link,
+  Outlet,
+  useBlocker,
+  useLocation,
+  useNavigate,
+  useSearchParams,
+} from "react-router-dom";
+import { useSession } from "./app/SessionProvider";
+import { useDashboardRoute } from "./app/router";
+import {
+  resourceForPage,
+  useOptions,
+  useWorkspaceList,
+  useWorkspaceOverview,
+  workspaceKey,
+} from "./app/useWorkspaceQueries";
+import { ErrorBoundary } from "./components/ErrorBoundary";
+import { Button, Modal } from "./components/ui";
+import type { AgentConfig } from "./contracts/schemas";
+import { ApiError } from "./lib/api";
+import { agentService, metadataService } from "./services/platform";
+const AgentEditor = lazy(() =>
+  import("./features/agents/AgentEditor").then((m) => ({
+    default: m.AgentEditor,
+  })),
+);
+
 import { CallDetailsDialog } from "./features/calls/CallDetailsDialog";
-import { WorkspaceDialog } from "./features/workspace/WorkspaceDialog";
 import { WorkspacePage } from "./features/workspace/WorkspacePage";
 import { agentFingerprint, editableAgent } from "./lib/agents";
 import { api } from "./lib/api";
 import { DEFAULT_CONFIG, LABELS, NAV, VOICES } from "./lib/config";
 import type { Page, Row } from "./lib/types";
+const WorkspaceDialog = lazy(() =>
+  import("./features/workspace/WorkspaceDialog").then((m) => ({
+    default: m.WorkspaceDialog,
+  })),
+);
 
 import {
   Activity,
@@ -18,150 +58,253 @@ import {
   X,
 } from "lucide-react";
 
-import { AgentTest } from "./features/agents/AgentTest";
+const AgentTest = lazy(() =>
+  import("./features/agents/AgentTest").then((m) => ({ default: m.AgentTest })),
+);
 
 export function App() {
-  const [loading, setLoading] = useState(true),
-    [session, setSession] = useState<Row | null>(null),
-    [setup, setSetup] = useState(false),
-    [setupAvailable, setSetupAvailable] = useState(false),
-    [timezones, setTimezones] = useState<string[]>(["Asia/Kolkata", "UTC"]),
-    [setupTokenRequired, setSetupTokenRequired] = useState(false),
-    [page, setPage] = useState<Page>("overview"),
-    [data, setData] = useState<Row[]>([]),
-    [overview, setOverview] = useState<Row>({}),
-    [busy, setBusy] = useState(false),
-    [notice, setNotice] = useState(""),
-    [error, setError] = useState(""),
-    [search, setSearch] = useState(""),
-    [modal, setModal] = useState(""),
-    [selected, setSelected] = useState<Row | null>(null),
-    [editor, setEditor] = useState<Row | null>(null),
-    [agentTab, setAgentTab] = useState("Identity"),
-    [connections, setConnections] = useState<Row[]>([]),
-    [collections, setCollections] = useState<Row[]>([]),
-    [agents, setAgents] = useState<Row[]>([]),
-    [contacts, setContacts] = useState<Row[]>([]),
-    [numbers, setNumbers] = useState<Row[]>([]),
-    [templates, setTemplates] = useState<Row[]>([]),
-    [documents, setDocuments] = useState<Row[]>([]),
-    [draft, setDraft] = useState<Row>({}),
-    [simulator, setSimulator] = useState<Row | null>(null),
-    [call, setCall] = useState<Row | null>(null),
-    [refreshKey, setRefreshKey] = useState(0);
+  const auth = useSession();
+  const session = auth.session!;
+  const setSession = auth.setSession;
+  const location = useLocation();
+  const route = useDashboardRoute();
+  const page = route.page || "overview";
+  const routerNavigate = useNavigate();
+  const [params, setParams] = useSearchParams();
+  const queryClient = useQueryClient();
+  const committedNavigation = useRef(false);
+  const [busyCount, setBusyCount] = useState(0);
+  const busy = busyCount > 0;
+  const [notice, setNotice] = useState("");
+  const [error, setError] = useState("");
+  const [modal, updateModal] = useState("");
+  const [selected, setSelected] = useState<Row | null>(null);
+  const [editor, updateEditor] = useState<Row | null>(null);
+  const [agentTab, setAgentTab] = useState("Identity");
+  const [documents, setDocuments] = useState<Row[]>([]);
+  const [dialogInitial, setDialogInitial] = useState<Row>({});
+  const [simulator, updateSimulator] = useState<Row | null>(null);
+  const [call, setCall] = useState<Row | null>(null);
+  const setModal: Dispatch<SetStateAction<string>> = (value) => {
+    updateModal(value);
+    if (value === "") setDialogInitial({});
+  };
+  const search = params.get("q") || "";
+  const listPage = Math.min(
+    1000000,
+    Math.max(1, Math.floor(Number(params.get("page"))) || 1),
+  );
+  const sort = params.get("sort") || "newest";
+  const updateParams = (values: Record<string, string>) =>
+    setParams(
+      (previous) => {
+        const next = new URLSearchParams(previous);
+        Object.entries(values).forEach(([key, value]) => next.set(key, value));
+        return next;
+      },
+      { replace: true },
+    );
+  const setSearch = (value: string | ((value: string) => string)) =>
+    updateParams({
+      q: typeof value === "function" ? value(search) : value,
+      page: "1",
+    });
+  const setSort = (value: string) => updateParams({ sort: value, page: "1" });
+  const forbidden =
+    route.role === "admin"
+      ? session.user.role !== "admin"
+      : route.role === "operator" && session.user.role === "viewer";
+  const setEditor: Dispatch<SetStateAction<Row | null>> = (value) => {
+    if (typeof value === "function") {
+      updateEditor(value);
+      return;
+    }
+    if (!value) {
+      routerNavigate("/dashboard/agents");
+      return;
+    }
+    updateEditor(value);
+    const destination = value.id
+      ? `/dashboard/agents/${value.id}`
+      : "/dashboard/agents/new";
+    if (location.pathname !== destination) {
+      committedNavigation.current =
+        value._savedFingerprint === agentFingerprint(value);
+      routerNavigate(destination);
+      queueMicrotask(() => {
+        committedNavigation.current = false;
+      });
+    }
+  };
+  const setSimulator: Dispatch<SetStateAction<Row | null>> = (value) => {
+    if (typeof value === "function") {
+      updateSimulator(value);
+      return;
+    }
+    if (value) {
+      updateSimulator(value);
+      routerNavigate(`/dashboard/agents/${value.id}/simulate`);
+    } else {
+      updateSimulator(null);
+      if (route.agentId) routerNavigate(`/dashboard/agents/${route.agentId}`);
+    }
+  };
   const canEdit = session?.user.role !== "viewer",
     isAdmin = session?.user.role === "admin";
-  const refresh = () => setRefreshKey((k) => k + 1);
+  const refresh = () => {
+    const resource = resourceForPage[page];
+    void queryClient.invalidateQueries({
+      predicate: (query) =>
+        query.queryKey[0] === "workspace" &&
+        query.queryKey[1] === session.workspace.id &&
+        (query.queryKey[2] === "overview" ||
+          query.queryKey[3] === resource ||
+          query.queryKey[3] === route.agentId),
+    });
+  };
   const run = async (fn: () => Promise<void>) => {
-    setBusy(true);
+    setBusyCount((value) => value + 1);
     setError("");
     setNotice("");
     try {
       await fn();
-    } catch (e) {
-      setError((e as Error).message);
+    } catch (cause) {
+      if (!(cause instanceof ApiError && cause.status === 401))
+        setError(
+          cause instanceof Error
+            ? cause.message
+            : "The operation could not be completed.",
+        );
     } finally {
-      setBusy(false);
+      setBusyCount((value) => Math.max(0, value - 1));
     }
   };
+  const list = useWorkspaceList(
+    session.workspace.id,
+    page,
+    {
+      page: listPage,
+      pageSize: 25,
+      search,
+      sort: "created_at",
+      direction: sort === "oldest" ? "asc" : "desc",
+    },
+    isAdmin,
+  );
   useEffect(() => {
-    (async () => {
-      try {
-        const info = await api("/bootstrap");
-        setSetupAvailable(info.setup_required);
-        setSetup(info.setup_required && window.location.hash !== "#login");
-        setSetupTokenRequired(info.setup_token_required);
-        if (!info.setup_required) {
-          try {
-            setSession(await api("/me"));
-          } catch {}
-        }
-      } catch (e) {
-        setError((e as Error).message);
-      } finally {
-        setLoading(false);
-      }
-    })();
-  }, []);
+    if (list.data && listPage > Math.max(1, list.data.pages))
+      updateParams({ page: String(Math.max(1, list.data.pages)) });
+  }, [list.data?.pages, listPage]);
+  const overviewQuery = useWorkspaceOverview(
+    session.workspace.id,
+    page === "overview",
+  );
+  const editingAgent = !!editor || !!route.agentId || route.mode === "new";
+  const c = useOptions(
+    session.workspace.id,
+    "connections",
+    editingAgent || ["number", "collection"].includes(modal),
+  );
+  const k = useOptions(session.workspace.id, "collections", editingAgent);
+  const a = useOptions(
+    session.workspace.id,
+    "agents",
+    ["number", "outbound", "campaign"].includes(modal),
+  );
+  const n = useOptions(
+    session.workspace.id,
+    "numbers",
+    ["outbound", "campaign"].includes(modal),
+  );
+  const templatesQuery = useQuery({
+    queryKey: [...workspaceKey(session.workspace.id), "templates"],
+    queryFn: ({ signal }) => metadataService.templates(signal),
+    staleTime: Infinity,
+  });
+  const timezoneQuery = useQuery({
+    queryKey: ["timezones"],
+    queryFn: ({ signal }) =>
+      api<string[]>("/timezones", "GET", undefined, { signal }),
+    staleTime: Infinity,
+  });
+  const connections: Row[] = c.data || [],
+    collections: Row[] = k.data || [],
+    agents: Row[] = a.data || overviewQuery.data?.agent_choices || [],
+    numbers: Row[] = n.data || [],
+    templates = templatesQuery.data || [],
+    timezones = timezoneQuery.data || ["Asia/Kolkata", "UTC"];
+  const setConnections: Dispatch<SetStateAction<Row[]>> = (value) =>
+    queryClient.setQueryData(
+      [...workspaceKey(session.workspace.id), "options", "connections"],
+      (previous: Row[] = []) =>
+        typeof value === "function" ? value(previous) : value,
+    );
+  const data: Row[] = list.data?.items || [],
+    filtered = data;
+  const overview: Row = overviewQuery.data || {};
+  const loading =
+    page === "overview"
+      ? overviewQuery.isPending
+      : page === "settings" && !isAdmin
+        ? false
+        : list.isPending;
+  const dataError =
+    list.error ||
+    overviewQuery.error ||
+    c.error ||
+    k.error ||
+    a.error ||
+    n.error ||
+    templatesQuery.error;
+  const selectedAgent = useQuery({
+    queryKey: [...workspaceKey(session.workspace.id), "agent", route.agentId],
+    enabled: !!route.agentId && !forbidden,
+    queryFn: ({ signal }) => agentService.get(route.agentId!, signal),
+  });
   useEffect(() => {
-    api("/timezones")
-      .then((zones) => {
-        if (Array.isArray(zones) && zones.length) setTimezones(zones);
-      })
-      .catch(() => {});
-  }, []);
+    setError("");
+    updateModal("");
+    setDialogInitial({});
+    setSelected(null);
+    setCall(null);
+    setSearchInputResetKey(location.pathname);
+    if (!route.agentId && route.mode !== "new") {
+      updateEditor(null);
+      updateSimulator(null);
+    }
+    if (route.mode !== "simulate") updateSimulator(null);
+    if (
+      location.pathname === "/dashboard" ||
+      location.pathname === "/dashboard/"
+    )
+      routerNavigate("/dashboard/overview", { replace: true });
+  }, [location.pathname]);
   useEffect(() => {
-    const changeAuth = () => {
-      setSetup(setupAvailable && window.location.hash !== "#login");
-      setError("");
-      setDraft((prev) => ({ ...prev, password: "", setup_token: "" }));
-    };
-    window.addEventListener("hashchange", changeAuth);
-    return () => window.removeEventListener("hashchange", changeAuth);
-  }, [setupAvailable]);
+    if (route.agentId && selectedAgent.data && !forbidden) {
+      if (editor?.id !== route.agentId)
+        updateEditor(editableAgent(selectedAgent.data));
+      if (route.mode === "simulate")
+        updateSimulator((previous) =>
+          previous?.id === route.agentId ? previous : selectedAgent.data!,
+        );
+    }
+  }, [route.agentId, route.mode, selectedAgent.data, forbidden]);
   useEffect(() => {
-    if (!session) return;
-    let live = true;
-    setLoading(true);
-    setSearch("");
-    (async () => {
-      try {
-        const [c, k, a, t, n, people] = await Promise.all([
-          api("/connections"),
-          api("/collections"),
-          api("/agents"),
-          api("/templates"),
-          api("/numbers"),
-          api("/contacts"),
-        ]);
-        if (!live) return;
-        setConnections(c);
-        setCollections(k);
-        setAgents(a);
-        setTemplates(t);
-        setNumbers(n);
-        setContacts(people);
-        const endpoints: Record<Page, string> = {
-          overview: "/overview",
-          agents: "/agents",
-          knowledge: "/collections",
-          connections: "/connections",
-          numbers: "/numbers",
-          contacts: "/contacts",
-          campaigns: "/campaigns",
-          calls: "/calls",
-          tasks: "/tasks",
-          settings: isAdmin ? "/users" : "/me",
-        };
-        const result = await api(endpoints[page]);
-        if (!live) return;
-        if (page === "overview") setOverview(result);
-        else setData(Array.isArray(result) ? result : []);
-      } catch (e) {
-        if (live) setError((e as Error).message);
-      } finally {
-        if (live) setLoading(false);
-      }
-    })();
-    return () => {
-      live = false;
-    };
-  }, [session, page, refreshKey, isAdmin]);
+    if (route.mode === "new" && (!editor || editor.id)) newAgent();
+  }, [route.mode, location.pathname]);
+  const [searchInputResetKey, setSearchInputResetKey] = useState(
+    location.pathname,
+  );
   useEffect(() => {
     if (!notice) return;
     const timer = setTimeout(() => setNotice(""), 7000);
     return () => clearTimeout(timer);
   }, [notice]);
   function navigate(next: Page) {
-    setPage(next);
-    setSimulator(null);
-    setEditor(null);
-    setError("");
-    setModal("");
-    setSelected(null);
+    routerNavigate(`/dashboard/${next}`);
   }
   function newAgent(template?: Row) {
-    setEditor({
+    const next = {
       name: "",
       description: "",
       config: {
@@ -174,15 +317,13 @@ export function App() {
             }
           : {}),
       },
-    });
+    };
+    setEditor(editableAgent(next));
     setAgentTab("Identity");
     setModal("");
   }
-  const filtered = data.filter((row) =>
-    JSON.stringify(row).toLowerCase().includes(search.toLowerCase()),
-  );
   function startModal(name: string, initial: Row = {}) {
-    setDraft(initial);
+    setDialogInitial(initial);
     setModal(name);
     setError("");
   }
@@ -190,64 +331,35 @@ export function App() {
     event.preventDefault();
     void run(fn);
   };
-  const input = (key: string, type = "text", required = true) => (
-    <input
-      type={type}
-      required={required}
-      value={draft[key] ?? ""}
-      onChange={(e) => setDraft({ ...draft, [key]: e.target.value })}
-    />
-  );
-  const select = (
-    key: string,
-    items: Row[],
-    label = "name",
-    empty = "Choose…",
-  ) => (
-    <select
-      required
-      value={draft[key] ?? ""}
-      onChange={(e) => setDraft({ ...draft, [key]: e.target.value })}
-    >
-      <option value="">{empty}</option>
-      {items.map((row) => (
-        <option key={row.id} value={row.id}>
-          {row[label]}
-        </option>
-      ))}
-    </select>
-  );
   const saveDone = (message: string) => {
     setModal("");
     refresh();
     setNotice(message);
   };
-  if (!session)
-    return (
-      <AuthPage
-        loading={loading}
-        setup={setup}
-        error={error}
-        formSubmit={formSubmit}
-        draft={draft}
-        setSession={setSession}
-        setDraft={setDraft}
-        setSetup={setSetup}
-        setupTokenRequired={setupTokenRequired}
-        input={input}
-        timezones={timezones}
-        busy={busy}
-        setupAvailable={setupAvailable}
-      />
-    );
   const config = editor?.config || {};
   const unsaved =
-    !!editor?.id && editor._savedFingerprint !== agentFingerprint(editor);
-  function cf(key: string, value: any) {
+    !!editor && editor._savedFingerprint !== agentFingerprint(editor);
+  function cf<K extends keyof AgentConfig>(key: K, value: AgentConfig[K]) {
     setEditor((prev) =>
       prev ? { ...prev, config: { ...prev.config, [key]: value } } : prev,
     );
   }
+  const blocker = useBlocker(
+    ({ currentLocation, nextLocation }) =>
+      !committedNavigation.current &&
+      unsaved &&
+      currentLocation.pathname !== nextLocation.pathname,
+  );
+  useEffect(() => {
+    const prevent = (event: BeforeUnloadEvent) => {
+      if (unsaved) {
+        event.preventDefault();
+        event.returnValue = "";
+      }
+    };
+    window.addEventListener("beforeunload", prevent);
+    return () => window.removeEventListener("beforeunload", prevent);
+  }, [unsaved]);
   return (
     <div className="app-shell">
       <aside className="sidebar">
@@ -282,6 +394,7 @@ export function App() {
             <button
               key={key}
               className={page === key ? "active" : ""}
+              aria-current={page === key ? "page" : undefined}
               onClick={() => navigate(key)}
             >
               <Icon size={18} />
@@ -300,15 +413,10 @@ export function App() {
           </div>
           <button
             className="profile"
-            onClick={() =>
-              void run(async () => {
-                await api("/logout", "POST");
-                setSession(null);
-                setData([]);
-                setEditor(null);
-                setSimulator(null);
-              })
-            }
+            onClick={() => {
+              updateEditor(null);
+              void auth.logout();
+            }}
           >
             <span className="profile-avatar">{session.user.name[0]}</span>
             <span>
@@ -319,6 +427,9 @@ export function App() {
           </button>
         </div>
       </aside>
+      <a className="skip-link" href="#workspace-content">
+        Skip to workspace content
+      </a>
       <div className="main-shell">
         <header className="topbar">
           <span>
@@ -345,93 +456,160 @@ export function App() {
             </button>
           </div>
         </header>
-        <main>
-          {error && (
-            <div className="alert error" role="alert">
-              {error}
-              <button aria-label="Dismiss error" onClick={() => setError("")}>
-                <X size={16} />
-              </button>
-            </div>
-          )}
-          {notice && (
-            <div className="alert success" role="status">
-              <CheckCircle2 size={17} />
-              {notice}
-            </div>
-          )}
-          {simulator ? (
-            <AgentTest
-              agent={simulator as any}
-              voice={
-                VOICES[simulator.config.voice_id] || simulator.config.voice_id
-              }
-              onClose={() => {
-                const id = simulator.id;
-                setSimulator(null);
-                void run(async () => {
-                  const updated = await api("/agents/" + id);
-                  setEditor(editableAgent(updated));
-                  refresh();
-                });
-              }}
-            />
-          ) : editor ? (
-            <AgentEditor
-              startModal={startModal}
-              setEditor={setEditor}
-              editor={editor}
-              busy={busy}
-              canEdit={canEdit}
-              run={run}
-              refresh={refresh}
-              setNotice={setNotice}
-              unsaved={unsaved}
-              config={config}
-              setAgentTab={setAgentTab}
-              setError={setError}
-              setSimulator={setSimulator}
-              isAdmin={isAdmin}
-              agentTab={agentTab}
-              templates={templates}
-              cf={cf}
-              connections={connections}
-              collections={collections}
-            />
-          ) : (
-            <WorkspacePage
-              page={page}
-              session={session}
-              canEdit={canEdit}
-              busy={busy}
-              isAdmin={isAdmin}
-              startModal={startModal}
-              loading={loading}
-              navigate={navigate}
-              overview={overview}
-              agents={agents}
-              run={run}
-              setCall={setCall}
-              connections={connections}
-              collections={collections}
-              numbers={numbers}
-              search={search}
-              setSearch={setSearch}
-              filtered={filtered}
-              refresh={refresh}
-              templates={templates}
-              setEditor={setEditor}
-              setAgentTab={setAgentTab}
-              setNotice={setNotice}
-              setSelected={setSelected}
-              setDocuments={setDocuments}
-              setModal={setModal}
-              formSubmit={formSubmit}
-              setSession={setSession}
-              timezones={timezones}
-              data={data}
-            />
-          )}
+        <main key={searchInputResetKey} id="workspace-content" tabIndex={-1}>
+          <Suspense
+            fallback={
+              <div className="loading" role="status">
+                Loading page…
+              </div>
+            }
+          >
+            <ErrorBoundary resetKey={location.pathname}>
+              {dataError && (
+                <div className="alert error" role="alert">
+                  {dataError.message}
+                  <button className="button" onClick={refresh}>
+                    Retry
+                  </button>
+                </div>
+              )}
+              {error && (
+                <div className="alert error" role="alert">
+                  {error}
+                  <button
+                    aria-label="Dismiss error"
+                    onClick={() => setError("")}
+                  >
+                    <X size={16} />
+                  </button>
+                </div>
+              )}
+              {notice && (
+                <div className="alert success" role="status">
+                  <CheckCircle2 size={17} />
+                  {notice}
+                </div>
+              )}
+              {forbidden ? (
+                <section className="card padded" role="alert">
+                  <h1>Access restricted</h1>
+                  <p>
+                    You do not have permission to use this feature. Ask an
+                    administrator for access.
+                  </p>
+                  <Link className="button" to="/dashboard/overview">
+                    Back to overview
+                  </Link>
+                </section>
+              ) : route.notFound ? (
+                <Outlet />
+              ) : selectedAgent.isError ? (
+                <section className="card padded" role="alert">
+                  <h1>
+                    {selectedAgent.error instanceof ApiError &&
+                    selectedAgent.error.status === 404
+                      ? "Agent not found"
+                      : "Agent unavailable"}
+                  </h1>
+                  <p>{selectedAgent.error.message}</p>
+                  <button
+                    className="button"
+                    onClick={() => void selectedAgent.refetch()}
+                  >
+                    Retry
+                  </button>
+                  <Link className="button" to="/dashboard/agents">
+                    All agents
+                  </Link>
+                </section>
+              ) : route.agentId && selectedAgent.isPending ? (
+                <div className="loading" role="status">
+                  Loading agent…
+                </div>
+              ) : simulator ? (
+                <AgentTest
+                  agent={simulator as any}
+                  voice={
+                    VOICES[simulator.config.voice_id] ||
+                    simulator.config.voice_id
+                  }
+                  onClose={() => {
+                    const id = simulator.id;
+                    setSimulator(null);
+                    void run(async () => {
+                      const updated = await agentService.get(id);
+                      setEditor(editableAgent(updated));
+                      refresh();
+                    });
+                  }}
+                />
+              ) : editor ? (
+                <AgentEditor
+                  startModal={startModal}
+                  setEditor={setEditor}
+                  editor={editor}
+                  busy={busy}
+                  canEdit={canEdit}
+                  run={run}
+                  refresh={refresh}
+                  setNotice={setNotice}
+                  unsaved={unsaved}
+                  config={config}
+                  setAgentTab={setAgentTab}
+                  setError={setError}
+                  setSimulator={setSimulator}
+                  isAdmin={isAdmin}
+                  agentTab={agentTab}
+                  templates={templates}
+                  cf={cf}
+                  connections={connections}
+                  collections={collections}
+                />
+              ) : (
+                <WorkspacePage
+                  page={page}
+                  session={session}
+                  canEdit={canEdit}
+                  busy={busy}
+                  isAdmin={isAdmin}
+                  startModal={startModal}
+                  loading={loading}
+                  navigate={navigate}
+                  overview={overview}
+                  agents={agents}
+                  run={run}
+                  setCall={setCall}
+                  connections={connections}
+                  collections={collections}
+                  numbers={numbers}
+                  search={search}
+                  setSearch={setSearch}
+                  filtered={filtered}
+                  refresh={refresh}
+                  templates={templates}
+                  setEditor={setEditor}
+                  setAgentTab={setAgentTab}
+                  setNotice={setNotice}
+                  setSelected={setSelected}
+                  setDocuments={setDocuments}
+                  setModal={setModal}
+                  formSubmit={formSubmit}
+                  setSession={setSession}
+                  timezones={timezones}
+                  data={data}
+                  pagination={{
+                    page: listPage,
+                    pages: list.data?.pages || 0,
+                    total: list.data?.total || 0,
+                    pageSize: 25,
+                    setPage: (value) => updateParams({ page: String(value) }),
+                  }}
+                  sort={sort}
+                  setSort={setSort}
+                />
+              )}
+            </ErrorBoundary>
+          </Suspense>
           <footer className="page-footer">
             <span>
               PulseMux <span> / </span> Clinical voice operations
@@ -443,40 +621,60 @@ export function App() {
           </footer>
         </main>
       </div>
-      {modal && (
-        <WorkspaceDialog
-          draft={draft}
-          selected={selected}
-          modal={modal}
-          setModal={setModal}
-          error={error}
-          templates={templates}
-          newAgent={newAgent}
-          formSubmit={formSubmit}
-          cf={cf}
-          setConnections={setConnections}
-          setDraft={setDraft}
-          saveDone={saveDone}
-          setDocuments={setDocuments}
-          setNotice={setNotice}
-          session={session}
-          navigate={navigate}
-          input={input}
-          connections={connections}
-          select={select}
-          agents={agents}
-          timezones={timezones}
-          numbers={numbers}
-          contacts={contacts}
-          busy={busy}
-          run={run}
-          canEdit={canEdit}
-          documents={documents}
-          isAdmin={isAdmin}
-          refresh={refresh}
-        />
+      <Suspense
+        fallback={
+          <div className="overlay">
+            <div className="card padded" role="status">
+              Loading dialog…
+            </div>
+          </div>
+        }
+      >
+        {modal && (
+          <WorkspaceDialog
+            initial={dialogInitial}
+            selected={selected}
+            modal={modal}
+            setModal={setModal}
+            error={error}
+            templates={templates}
+            newAgent={newAgent}
+            formSubmit={formSubmit}
+            cf={cf}
+            setConnections={setConnections}
+            saveDone={saveDone}
+            setDocuments={setDocuments}
+            setNotice={setNotice}
+            session={session}
+            navigate={navigate}
+            connections={connections}
+            agents={agents}
+            timezones={timezones}
+            numbers={numbers}
+            busy={busy}
+            run={run}
+            canEdit={canEdit}
+            documents={documents}
+            isAdmin={isAdmin}
+            refresh={refresh}
+          />
+        )}
+        {call && <CallDetailsDialog call={call} setCall={setCall} />}
+      </Suspense>
+      {blocker.state === "blocked" && (
+        <Modal
+          title="Leave without saving?"
+          subtitle="Your agent has unsaved changes."
+          onClose={() => blocker.reset()}
+        >
+          <div className="modal-content">
+            <Button onClick={() => blocker.reset()}>Keep editing</Button>
+            <Button onClick={() => blocker.proceed()}>
+              Discard changes and leave
+            </Button>
+          </div>
+        </Modal>
       )}
-      {call && <CallDetailsDialog call={call} setCall={setCall} />}
     </div>
   );
 }

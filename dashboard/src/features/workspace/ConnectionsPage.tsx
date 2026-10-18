@@ -2,6 +2,7 @@ import { Plus } from "lucide-react";
 import { Badge, Button, Empty } from "../../components/ui";
 import { api } from "../../lib/api";
 import { date } from "../../lib/format";
+import { operationService } from "../../services/platform";
 import type { WorkspacePageProps } from "./types";
 type Props = Pick<
   WorkspacePageProps,
@@ -55,10 +56,8 @@ export function ConnectionsPage({
                           <button
                             onClick={() =>
                               void run(async () => {
-                                const result = await api(
-                                  `/connections/${c.id}/test`,
-                                  "POST",
-                                );
+                                const result =
+                                  await operationService.connectionStatus(c.id);
                                 refresh();
                                 setNotice(result.message);
                               })

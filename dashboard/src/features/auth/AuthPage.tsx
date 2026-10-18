@@ -1,5 +1,6 @@
 import { Activity, ArrowRight, ShieldCheck } from "lucide-react";
 import React, { type FormEvent } from "react";
+import { Link } from "react-router-dom";
 import { Button, Field, TimezoneSelect } from "../../components/ui";
 import { api } from "../../lib/api";
 import type { Row } from "../../lib/types";
@@ -10,7 +11,7 @@ type AuthPageProps = {
   error: string;
   formSubmit: (fn: () => Promise<void>) => (event: FormEvent) => void;
   draft: Row;
-  setSession: React.Dispatch<React.SetStateAction<Row | null>>;
+  setSession: (value: unknown) => void;
   setDraft: React.Dispatch<React.SetStateAction<Row>>;
   setSetup: React.Dispatch<React.SetStateAction<boolean>>;
   setupTokenRequired: boolean;
@@ -133,7 +134,8 @@ export function AuthPage({
           <p className="auth-switch">
             {setup ? (
               <>
-                Already have a workspace? <a href="#login">Sign in</a>
+                Already have a workspace?{" "}
+                <Link to="/dashboard/login">Sign in</Link>
               </>
             ) : (
               <>
@@ -142,7 +144,7 @@ export function AuthPage({
                 {setupAvailable && (
                   <>
                     <br />
-                    <a href="#setup">Create a workspace</a>
+                    <Link to="/dashboard/setup">Create a workspace</Link>
                   </>
                 )}
               </>

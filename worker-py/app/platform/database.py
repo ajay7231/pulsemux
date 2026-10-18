@@ -32,12 +32,30 @@ class Database:
                 connection.execute("PRAGMA foreign_keys=ON")
                 connection.execute("PRAGMA journal_mode=WAL")
 
-        if self.engine.dialect.name == "postgresql":
-            with self.engine.begin() as connection:
-                connection.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
         self.Session = sessionmaker(self.engine, expire_on_commit=False)
-        # The initial schema is idempotent; subsequent changes use Alembic.
-        Base.metadata.create_all(self.engine)
+        if os.getenv("PLATFORM_ENV") == "production":
+            # Runtime credentials need no DDL privileges. Deployment runs Alembic first.
+            from alembic.config import Config
+            from alembic.script import ScriptDirectory
+            from alembic.runtime.migration import MigrationContext
+
+            migrations = Path(__file__).resolve().parents[2] / "migrations"
+            config = Config()
+            config.set_main_option("script_location", str(migrations))
+            expected = set(ScriptDirectory.from_config(config).get_heads())
+            with self.engine.connect() as connection:
+                current = set(
+                    MigrationContext.configure(connection).get_current_heads()
+                )
+            if current != expected:
+                raise RuntimeError(
+                    "Database migrations are required; run alembic upgrade head before starting the application"
+                )
+        else:
+            if self.engine.dialect.name == "postgresql":
+                with self.engine.begin() as connection:
+                    connection.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
+            Base.metadata.create_all(self.engine)
 
 
 @lru_cache(maxsize=1)

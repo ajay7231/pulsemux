@@ -21,6 +21,21 @@ x-platform: &platform
     - platform-data:/data
     - ../worker-py/models:/app/models:ro
 services:
+  edge:
+    image: caddy:2-alpine
+    profiles: ['edge']
+    environment:
+      PUBLIC_BASE_URL: ${PUBLIC_BASE_URL:?Set PUBLIC_BASE_URL}
+    ports:
+      - '80:80'
+      - '443:443'
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      - gateway
+    restart: unless-stopped
   platform:
     <<: *platform
     ports:
@@ -83,3 +98,5 @@ volumes:
   postgres-data:
   redis-data:
   platform-data:
+  caddy-data:
+  caddy-config:
