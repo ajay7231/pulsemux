@@ -1,3 +1,4 @@
+import { api } from "../../lib/api";
 import { useEffect, useState } from "react";
 
 export function ModelSelect({
@@ -27,16 +28,12 @@ export function ModelSelect({
     }
     const controller = new AbortController();
     setLoading(true);
-    fetch(`/api/connections/${encodeURIComponent(connectionId)}/models`, {
-      credentials: "same-origin",
-      signal: controller.signal,
-    })
-      .then(async (response) => {
-        const data = await response.json();
-        if (!response.ok)
-          throw new Error(data.detail || "Could not load models.");
-        return data;
-      })
+    api<{ models: { id: string; name: string }[] }>(
+      `/connections/${encodeURIComponent(connectionId)}/models`,
+      "GET",
+      undefined,
+      { signal: controller.signal },
+    )
       .then((data) => {
         if (!controller.signal.aborted)
           setResult({ connection: connectionId, models: data.models });

@@ -1,0 +1,130 @@
+import { Plus } from "lucide-react";
+import { Badge, Button, Empty } from "../../components/ui";
+import { api } from "../../lib/api";
+import { date } from "../../lib/format";
+import type { WorkspacePageProps } from "./types";
+type Props = Pick<
+  WorkspacePageProps,
+  | "busy"
+  | "isAdmin"
+  | "startModal"
+  | "run"
+  | "filtered"
+  | "refresh"
+  | "setNotice"
+>;
+export function ConnectionsPage({
+  busy,
+  isAdmin,
+  startModal,
+  run,
+  filtered,
+  refresh,
+  setNotice,
+}: Props) {
+  return (
+    <section className="card">
+      {filtered.length ? (
+        <div className="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>Connection</th>
+                <th>Provider</th>
+                <th>Status</th>
+                <th>Last checked</th>
+                <th />
+              </tr>
+            </thead>
+            <tbody>
+              {filtered.map((c) => (
+                <tr key={c.id}>
+                  <td>
+                    <strong>{c.name}</strong>
+                    <small>Credential revision {c.revision} · encrypted</small>
+                  </td>
+                  <td className="capitalize">{c.provider}</td>
+                  <td>
+                    <Badge value={!c.active ? "revoked" : c.test_status} />
+                  </td>
+                  <td>{c.tested_at ? date(c.tested_at) : "Not tested"}</td>
+                  <td>
+                    <div className="row-actions">
+                      {isAdmin && (
+                        <>
+                          <button
+                            onClick={() =>
+                              void run(async () => {
+                                const result = await api(
+                                  `/connections/${c.id}/test`,
+                                  "POST",
+                                );
+                                refresh();
+                                setNotice(result.message);
+                              })
+                            }
+                            disabled={busy || !c.active}
+                          >
+                            Test
+                          </button>
+                          <button
+                            onClick={() =>
+                              startModal("connection", {
+                                id: c.id,
+                                name: c.name,
+                                provider: c.provider,
+                              })
+                            }
+                          >
+                            Rotate
+                          </button>
+                          <button
+                            className="danger-text"
+                            onClick={() =>
+                              void run(async () => {
+                                await api(
+                                  `/connections/${c.id}/revoke`,
+                                  "POST",
+                                );
+                                refresh();
+                                setNotice("Connection revoked");
+                              })
+                            }
+                            disabled={busy || !c.active}
+                          >
+                            Revoke
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ) : (
+        <Empty
+          title="Your providers, connected"
+          action={
+            isAdmin ? (
+              <Button
+                onClick={() =>
+                  startModal("connection", {
+                    provider: "deepgram",
+                  })
+                }
+              >
+                <Plus size={16} />
+                Add a connection
+              </Button>
+            ) : undefined
+          }
+        >
+          Save Twilio, Deepgram, Groq, or OpenAI credentials. Keys are encrypted
+          and never returned to the browser.
+        </Empty>
+      )}
+    </section>
+  );
+}

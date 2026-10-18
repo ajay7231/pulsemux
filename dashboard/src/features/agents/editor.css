@@ -1,0 +1,20 @@
+.connection-picker {
+  margin-bottom: 22px;
+  min-width: 0;
+}
+.connection-picker .field {
+  margin-bottom: 8px;
+}
+.connection-picker .text-button,
+.model-picker .text-button {
+  font-size: 12px;
+}
+.model-picker {
+  margin: 20px 0 24px;
+}
+.field-error {
+  color: #a34b34;
+  font-size: 12px;
+  line-height: 1.6;
+  margin: 10px 0;
+}

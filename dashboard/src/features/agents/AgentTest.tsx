@@ -1,9 +1,10 @@
-import { useEffect, useRef } from "react";
 import { ArrowLeft, AudioLines, Mic, Phone, ShieldCheck } from "lucide-react";
+import { useEffect, useRef } from "react";
 import {
   createCallSimulator,
   type CallController,
-} from "../../worker-py/web/call.js";
+} from "../../../../worker-py/web/call.js";
+import "./test-call.css";
 
 type Agent = {
   id: string;

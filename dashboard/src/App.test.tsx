@@ -1,8 +1,7 @@
-import React from "react";
-import { afterEach, expect, test, vi } from "vitest";
-import { render, screen, cleanup, waitFor } from "@testing-library/react";
+import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { App } from "./main";
+import { afterEach, expect, test, vi } from "vitest";
+import { App } from "./App";
 const user = { id: "user", name: "Ada Admin", role: "admin" };
 const workspace = {
   name: "River Hospital",

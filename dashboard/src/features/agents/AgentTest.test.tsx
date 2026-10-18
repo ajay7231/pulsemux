@@ -1,7 +1,6 @@
-import React from "react";
-import { afterEach, expect, test, vi } from "vitest";
 import { act, cleanup, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { afterEach, expect, test, vi } from "vitest";
 import { AgentTest } from "./AgentTest";
 
 const agent = {

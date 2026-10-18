@@ -1,7 +1,6 @@
-import React from "react";
-import { afterEach, expect, test, vi } from "vitest";
 import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { afterEach, expect, test, vi } from "vitest";
 import { ModelSelect } from "./ModelSelect";
 afterEach(() => {
   cleanup();
