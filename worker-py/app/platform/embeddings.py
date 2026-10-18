@@ -41,6 +41,10 @@ async def embed(workspace_id, connection_id, texts):
 
 
 async def retrieve_hybrid(workspace_id, snapshot, query, limit=4):
+    from app.rag.integration import enabled, retrieve_snapshot
+
+    if enabled():
+        return await retrieve_snapshot(workspace_id, snapshot, query, limit)
     lexical = retrieve(snapshot, query, limit=12)
     semantic = []
     providers = {

@@ -398,3 +398,19 @@ Frontend release checks: `npm --prefix dashboard run lint`,
 `npm --prefix dashboard run format:check`, and `npm --prefix dashboard run build`.
 The build checks TypeScript and an initial-asset gzip budget. Email/password remains
 in use; hospital SSO/MFA integration is intentionally deferred by the current product choice.
+
+### Local clinical hybrid RAG
+
+The production Compose stack now includes private Qdrant storage and a separate
+`ingestion-worker` (`python -m app.rag.worker`). API startup warms the local BGE and
+BM25 embedding models; parsing runs only in the ingestion worker. Uploads are
+queued in PostgreSQL, not transient browser or process memory. Dashboard users can
+select multiple documents and see queued/processing/ready/failed states before
+clinical approval. Migration `0003_clinical_rag` adds the durable ingestion fields
+and chunk provenance.
+
+See [the RAG module guide](../worker-py/app/rag/README.md) for the local Docker
+acceptance command, token-bound guarantees, workspace/snapshot filtering, model
+cache setup, and deployment details. Existing Python 3.9 development environments
+retain the legacy pipeline while `QDRANT_URL` is unset; enabling the new backend
+requires Python 3.10+ with the new dependencies. The deployment images use 3.12.

@@ -129,6 +129,11 @@ export const userService = {
 };
 
 export const metadataService = {
+  knowledgeConfig: async () =>
+    validate(
+      z.object({ hybrid_enabled: z.boolean() }),
+      await api<unknown>("/knowledge/config"),
+    ),
   templates: async (signal?: AbortSignal) =>
     validate(
       z.array(templateSchema),
@@ -159,6 +164,8 @@ const documentSchema = z.object({
   title: z.string(),
   content: z.string(),
   status: z.string(),
+  ingestion_status: z.string().default("legacy"),
+  ingestion_error: z.string().nullable().default(null),
   reviewed_by: z.string().nullable(),
   reviewed_at: z.number().nullable(),
   expires_at: z.number().nullable(),
@@ -197,7 +204,7 @@ export const operationService = {
     ),
   indexDocument: async (id: string) =>
     validate(
-      z.object({ indexed_chunks: z.number() }),
+      z.object({ indexed_chunks: z.number(), status: z.string().optional() }),
       await api<unknown>(`/documents/${encodeURIComponent(id)}/index`, "POST"),
     ),
   documents: async (id: string) =>

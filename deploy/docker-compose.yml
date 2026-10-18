@@ -1,5 +1,16 @@
 
 services:
+  qdrant:
+    image: qdrant/qdrant:latest
+    ports:
+      - "6333:6333"
+      - "6334:6334"
+    volumes:
+      - ./qdrant_storage:/qdrant/storage
+    networks:
+      - pulsemux-net
+    restart: unless-stopped
+
   gateway-go:
     build:
       context: ../gateway-go
@@ -23,6 +34,8 @@ services:
     ports:
       - "50051:50051"
     environment:
+      - QDRANT_URL=http://qdrant:6333
+      - RAG_MODEL_CACHE=/app/model_cache
       - PORT=50051
       - REDIS_URL=redis://redis:6379/0
       - DEEPGRAM_API_KEY=${DEEPGRAM_API_KEY:-}

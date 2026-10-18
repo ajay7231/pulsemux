@@ -95,6 +95,11 @@ class Document(Owned, Base):
     reviewed_by = Column(String(32), ForeignKey("users.id"))
     reviewed_at = Column(Float)
     expires_at = Column(Float)
+    ingestion_status = Column(String(20), default="legacy", nullable=False)
+    ingestion_error = Column(Text)
+    ingestion_started_at = Column(Float)
+    ingestion_token = Column(String(32))
+    source_format = Column(String(12), default=".md", nullable=False)
 
 
 class Chunk(Owned, Base):
@@ -105,6 +110,7 @@ class Chunk(Owned, Base):
     position = Column(Integer, nullable=False)
     content = Column(Text, nullable=False)
     embedding = Column(Vector(1536).with_variant(JSON, "sqlite"))
+    rag_metadata = Column(JSON)
 
 
 class Agent(Owned, Base):

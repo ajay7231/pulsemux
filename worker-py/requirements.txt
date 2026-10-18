@@ -31,3 +31,6 @@ pypdf>=5
 alembic>=1.13
 celery[redis]>=5.4,<6
 pgvector>=0.3
+
+# Local clinical hybrid RAG (Docling requires Python 3.10+)
+-r requirements-rag.txt

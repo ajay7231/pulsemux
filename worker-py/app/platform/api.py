@@ -56,6 +56,7 @@ from .contracts import (
     AgentPublic,
     ConnectionPublic,
     WorkspacePublic,
+    DocumentPublic,
 )
 
 from .contracts import TemplatePublic, ModelCatalogPublic, OverviewPublic
@@ -80,6 +81,13 @@ def bootstrap(db: Session = Depends(get_db)):
         "setup_token_required": bool(os.getenv("PLATFORM_SETUP_TOKEN"))
         or os.getenv("PLATFORM_ENV") == "production",
     }
+
+
+@router.get("/knowledge/config")
+def knowledge_config(user=Depends(current_user)):
+    from app.rag.integration import enabled
+
+    return {"hybrid_enabled": enabled()}
 
 
 @router.get("/timezones")
@@ -530,7 +538,7 @@ def create_collection(
     return public_record(item)
 
 
-@router.get("/collections/{record_id}/documents")
+@router.get("/collections/{record_id}/documents", response_model=list[DocumentPublic])
 def documents(
     record_id: str, user=Depends(current_user), db: Session = Depends(get_db)
 ):
@@ -555,12 +563,17 @@ def save_document(db, user, collection_id, data):
     )
     db.add(item)
     db.flush()
-    chunk_document(db, item)
+    from app.rag.integration import enabled
+
+    if enabled():
+        item.ingestion_status = "queued"
+    else:
+        chunk_document(db, item)
     audit(db, user, "knowledge.document_created", item.id)
     return public_record(item)
 
 
-@router.post("/collections/{record_id}/documents")
+@router.post("/collections/{record_id}/documents", response_model=DocumentPublic)
 def create_document(
     record_id: str,
     data: DocumentInput,
@@ -570,7 +583,7 @@ def create_document(
     return save_document(db, user, record_id, data)
 
 
-@router.post("/collections/{record_id}/upload")
+@router.post("/collections/{record_id}/upload", response_model=DocumentPublic)
 async def upload_document(
     record_id: str,
     file: UploadFile = File(...),
@@ -582,6 +595,35 @@ async def upload_document(
     if len(content) > 5 * 1024 * 1024:
         raise HTTPException(413, "Files must be smaller than 5 MB")
     filename = Path(file.filename or "Document").name
+    from app.rag.integration import enabled, source_path
+
+    if enabled():
+        if not filename.lower().endswith((".pdf", ".md", ".txt", ".csv")):
+            raise HTTPException(422, "Upload PDF, TXT, Markdown, or CSV")
+        try:
+            data = DocumentInput(
+                title=filename[:200],
+                content=(
+                    "Document queued for layout-aware ingestion."
+                    if filename.lower().endswith(".pdf")
+                    else content.decode("utf-8-sig")
+                ),
+            )
+        except (ValueError, UnicodeError):
+            raise HTTPException(
+                422, "Text documents must be UTF-8 and contain 10–200,000 characters"
+            )
+        item = save_document(db, user, record_id, data)
+        doc = db.get(Document, item["id"])
+        doc.source_format = ".pdf" if filename.lower().endswith(".pdf") else ".md"
+        from .database import database
+
+        target = source_path(database(), doc)
+        descriptor = os.open(str(target), os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)
+        with os.fdopen(descriptor, "wb") as output:
+            output.write(content)
+        db.flush()
+        return public_record(doc)
     try:
         if filename.lower().endswith(".pdf"):
             from pypdf import PdfReader
@@ -612,6 +654,22 @@ async def upload_document(
 async def index_document(
     record_id: str, user=Depends(editor), db: Session = Depends(get_db)
 ):
+    from app.rag.integration import enabled
+
+    if enabled():
+        doc = owned(db, Document, record_id, user.workspace_id)
+        db.refresh(doc, with_for_update=True)
+        if doc.status == "archived":
+            raise HTTPException(409, "Archived documents cannot be indexed")
+        if doc.ingestion_status in {"queued", "processing"}:
+            return {"indexed_chunks": 0, "status": doc.ingestion_status}
+        doc.ingestion_status = "queued"
+        doc.ingestion_error = None
+        doc.status = "draft"
+        doc.reviewed_by = None
+        doc.reviewed_at = None
+        audit(db, user, "knowledge.index_queued", doc.id)
+        return {"indexed_chunks": 0, "status": "queued"}
     from .embeddings import embed
 
     doc = owned(db, Document, record_id, user.workspace_id)
@@ -641,11 +699,18 @@ async def index_document(
     return {"indexed_chunks": len(chunks)}
 
 
-@router.post("/documents/{record_id}/approve")
+@router.post("/documents/{record_id}/approve", response_model=DocumentPublic)
 def approve_document(
     record_id: str, user=Depends(admin), db: Session = Depends(get_db)
 ):
     item = owned(db, Document, record_id, user.workspace_id)
+    db.refresh(item, with_for_update=True)
+    if item.status == "archived":
+        raise HTTPException(409, "Archived documents cannot be approved")
+    if item.ingestion_status not in {"ready", "legacy"}:
+        raise HTTPException(
+            409, "Wait for ingestion to finish successfully before approving"
+        )
     if item.expires_at and item.expires_at <= time.time():
         raise HTTPException(422, "Document is expired")
     item.status = "approved"
@@ -655,7 +720,7 @@ def approve_document(
     return public_record(item)
 
 
-@router.post("/documents/{record_id}/archive")
+@router.post("/documents/{record_id}/archive", response_model=DocumentPublic)
 def archive_document(
     record_id: str, user=Depends(admin), db: Session = Depends(get_db)
 ):

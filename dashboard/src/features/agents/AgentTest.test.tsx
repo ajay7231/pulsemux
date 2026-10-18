@@ -11,8 +11,9 @@ const agent = {
 };
 function audioFixture() {
   const stop = vi.fn();
+  const track = { enabled: true, getSettings: () => ({ noiseSuppression: true }) };
   const microphone = {
-    getAudioTracks: () => [{ getSettings: () => ({ noiseSuppression: true }) }],
+    getAudioTracks: () => [track],
     getTracks: () => [{ stop }],
   };
   const getUserMedia = vi.fn(async () => microphone);
@@ -69,7 +70,7 @@ function audioFixture() {
       }
     },
   );
-  return { stop, close, sent, sockets, getUserMedia, microphone };
+  return { stop, close, sent, sockets, getUserMedia, microphone, track };
 }
 afterEach(() => {
   cleanup();
@@ -90,6 +91,12 @@ test("dashboard test streams the selected agent and releases call resources when
     agent_id: "saved-agent",
     draft: true,
   });
+  await person.click(screen.getByRole("button", { name: "Mute mic" }));
+  expect(f.track.enabled).toBe(false);
+  expect(screen.getByRole("button", { name: "Unmute mic" }).getAttribute("aria-pressed")).toBe("true");
+  expect(screen.getByText("Microphone muted")).toBeTruthy();
+  await person.click(screen.getByRole("button", { name: "Unmute mic" }));
+  expect(f.track.enabled).toBe(true);
   act(() => {
     f.sockets[0].onmessage({
       data: JSON.stringify({

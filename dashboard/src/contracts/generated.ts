@@ -38,6 +38,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/knowledge/config": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Knowledge Config */
+        get: operations["knowledge_config_api_knowledge_config_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/timezones": {
         parameters: {
             query?: never;
@@ -1285,6 +1302,36 @@ export interface components {
             /** Expires At */
             expires_at?: number | null;
         };
+        /** DocumentPublic */
+        DocumentPublic: {
+            /** Id */
+            id: string;
+            /** Workspace Id */
+            workspace_id: string;
+            /** Created At */
+            created_at: number;
+            /** Collection Id */
+            collection_id: string;
+            /** Title */
+            title: string;
+            /** Content */
+            content: string;
+            /** Status */
+            status: string;
+            /** Reviewed By */
+            reviewed_by?: string | null;
+            /** Reviewed At */
+            reviewed_at?: number | null;
+            /** Expires At */
+            expires_at?: number | null;
+            /**
+             * Ingestion Status
+             * @default legacy
+             */
+            ingestion_status: string;
+            /** Ingestion Error */
+            ingestion_error?: string | null;
+        };
         /** HTTPValidationError */
         HTTPValidationError: {
             /** Detail */
@@ -1564,6 +1611,26 @@ export interface operations {
         };
     };
     bootstrap_api_bootstrap_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    knowledge_config_api_knowledge_config_get: {
         parameters: {
             query?: never;
             header?: never;
@@ -2212,7 +2279,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": components["schemas"]["DocumentPublic"][];
                 };
             };
             /** @description Validation Error */
@@ -2247,7 +2314,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": components["schemas"]["DocumentPublic"];
                 };
             };
             /** @description Validation Error */
@@ -2282,7 +2349,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": components["schemas"]["DocumentPublic"];
                 };
             };
             /** @description Validation Error */
@@ -2344,7 +2411,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": components["schemas"]["DocumentPublic"];
                 };
             };
             /** @description Validation Error */
@@ -2375,7 +2442,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": components["schemas"]["DocumentPublic"];
                 };
             };
             /** @description Validation Error */

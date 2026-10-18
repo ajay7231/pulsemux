@@ -54,6 +54,18 @@ from app.platform.observability import install_observability, router as diagnost
 install_observability(app)
 app.include_router(diagnostics_router)
 
+@app.on_event("startup")
+async def warm_clinical_knowledge():
+    from app.rag.integration import start
+    await start()
+
+
+@app.on_event("shutdown")
+async def close_clinical_knowledge():
+    from app.rag.integration import stop
+    await stop()
+
+
 app.include_router(platform_router)
 from app.platform.resources import router as resource_router
 app.include_router(resource_router)
@@ -357,13 +369,18 @@ class VoiceSession:
             "model": getattr(self, "llm_model", "qwen/qwen3.8-27b"),
             "messages": messages,
             "stream": True,
-            "max_tokens": 120,
+            "max_completion_tokens": 1024,
             "temperature": 0.2,
         }
+        # Reasoning tokens share the completion budget with the spoken answer.
+        # 120 tokens can exhaust GPT-OSS's budget before any content is emitted.
+        if payload["model"] in {"openai/gpt-oss-20b", "openai/gpt-oss-120b"}:
+            payload["reasoning_effort"] = "low"
 
         first_token_time = None
         assistant_full_text = []
         audio_sent = False
+        finish_reason = None
 
         try:
             async with httpx.AsyncClient(timeout=10.0) as client:
@@ -382,7 +399,11 @@ class VoiceSession:
                             break
                         try:
                             chunk = json.loads(data_str)
-                            delta = chunk["choices"][0]["delta"].get("content", "")
+                            choices = chunk.get("choices", [])
+                            if not choices:
+                                continue
+                            finish_reason = choices[0].get("finish_reason") or finish_reason
+                            delta = choices[0].get("delta", {}).get("content") or ""
                             if delta:
                                 if first_token_time is None:
                                     first_token_time = time.time()
@@ -415,8 +436,14 @@ class VoiceSession:
                                             "turn_id": turn_id,
                                             "tts_ms": round(tts_ms, 1),
                                         })
-                        except Exception:
+                        except (json.JSONDecodeError, KeyError, TypeError):
                             continue
+
+            if not "".join(assistant_full_text).strip():
+                logger.warning("voice_empty_completion finish_reason=%s", finish_reason)
+                await self.send_json({"type": "error", "turn_id": turn_id,
+                                      "message": "The model returned no answer. Please try again or choose another model in the agent settings."})
+                return
 
             # Flush remaining clause words
             trailing = clause_splitter.flush()

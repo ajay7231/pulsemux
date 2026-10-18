@@ -52,6 +52,22 @@
         }
       }
     },
+    "/api/knowledge/config": {
+      "get": {
+        "summary": "Knowledge Config",
+        "operationId": "knowledge_config_api_knowledge_config_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/timezones": {
       "get": {
         "summary": "Timezones",
@@ -749,7 +765,13 @@
             "description": "Successful Response",
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/DocumentPublic"
+                  },
+                  "title": "Response Documents Api Collections  Record Id  Documents Get"
+                }
               }
             }
           },
@@ -794,7 +816,9 @@
             "description": "Successful Response",
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/DocumentPublic"
+                }
               }
             }
           },
@@ -841,7 +865,9 @@
             "description": "Successful Response",
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/DocumentPublic"
+                }
               }
             }
           },
@@ -915,7 +941,9 @@
             "description": "Successful Response",
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/DocumentPublic"
+                }
               }
             }
           },
@@ -952,7 +980,9 @@
             "description": "Successful Response",
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/DocumentPublic"
+                }
               }
             }
           },
@@ -2897,6 +2927,98 @@
           "content"
         ],
         "title": "DocumentInput"
+      },
+      "DocumentPublic": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "workspace_id": {
+            "type": "string",
+            "title": "Workspace Id"
+          },
+          "created_at": {
+            "type": "number",
+            "title": "Created At"
+          },
+          "collection_id": {
+            "type": "string",
+            "title": "Collection Id"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "content": {
+            "type": "string",
+            "title": "Content"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "reviewed_by": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reviewed By"
+          },
+          "reviewed_at": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reviewed At"
+          },
+          "expires_at": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expires At"
+          },
+          "ingestion_status": {
+            "type": "string",
+            "title": "Ingestion Status",
+            "default": "legacy"
+          },
+          "ingestion_error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ingestion Error"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "workspace_id",
+          "created_at",
+          "collection_id",
+          "title",
+          "content",
+          "status"
+        ],
+        "title": "DocumentPublic"
       },
       "HTTPValidationError": {
         "properties": {

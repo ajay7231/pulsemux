@@ -10,3 +10,6 @@ __pycache__
 bin
 
 worker-py/models/
+
+deploy/qdrant_storage/
+**/model_cache/

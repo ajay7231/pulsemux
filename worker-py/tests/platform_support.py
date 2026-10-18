@@ -21,9 +21,6 @@ def platform_client():
         },
     ):
         database.cache_clear()
-        from app.platform.api import _login_attempts
-
-        _login_attempts.clear()
         with TestClient(app) as client:
             response = client.post(
                 "/api/setup",

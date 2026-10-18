@@ -65,6 +65,18 @@ class CollectionPublic(RecordPublic):
     embedding_connection_id: Optional[str] = None
 
 
+class DocumentPublic(RecordPublic):
+    collection_id: str
+    title: str
+    content: str
+    status: str
+    reviewed_by: Optional[str] = None
+    reviewed_at: Optional[float] = None
+    expires_at: Optional[float] = None
+    ingestion_status: str = "legacy"
+    ingestion_error: Optional[str] = None
+
+
 class ContactPublic(RecordPublic):
     name: str
     phone: str

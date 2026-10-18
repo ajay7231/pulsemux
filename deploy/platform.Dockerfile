@@ -8,11 +8,13 @@ RUN npm run build
 
 FROM python:3.12-slim
 WORKDIR /app
-COPY worker-py/requirements.txt ./
+RUN apt-get update && apt-get install -y --no-install-recommends libgl1 libglib2.0-0 && rm -rf /var/lib/apt/lists/*
+COPY worker-py/requirements*.txt ./
+RUN pip install --no-cache-dir --index-url https://download.pytorch.org/whl/cpu torch torchvision
 RUN pip install --no-cache-dir -r requirements.txt
 COPY worker-py/ ./
 COPY --from=dashboard /source/worker-py/web/dashboard ./web/dashboard
-ENV PYTHONUNBUFFERED=1 PLATFORM_ENV=production PLATFORM_DATA_DIR=/data
+ENV PYTHONPATH=/app PYTHONUNBUFFERED=1 PLATFORM_ENV=production PLATFORM_DATA_DIR=/data
 RUN useradd --uid 10001 --create-home platform && mkdir -p /data && chown platform:platform /data
 USER platform
 EXPOSE 8000

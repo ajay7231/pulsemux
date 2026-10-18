@@ -1,3 +1,5 @@
+import { useQuery } from "@tanstack/react-query";
+import { metadataService } from "../../services/platform";
 import { ArrowRight, CalendarClock, Check } from "lucide-react";
 import React, { type FormEvent } from "react";
 import { Button, Field, Modal } from "../../components/ui";
@@ -66,6 +68,11 @@ export function WorkspaceDialog({
   isAdmin,
   refresh,
 }: WorkspaceDialogProps) {
+  const knowledge = useQuery({
+    queryKey: ["workspace", session.workspace.id, "knowledge-config"],
+    queryFn: metadataService.knowledgeConfig,
+    enabled: modal === "collection",
+  });
   const [draft, setDraft] = React.useState<Row>(() => structuredClone(initial));
   const input = (key: string, type = "text", required = true) => (
     <input
@@ -280,29 +287,48 @@ export function WorkspaceDialog({
               <Field label="Description">
                 {input("description", "text", false)}
               </Field>
-              <Field
-                label="Semantic search (optional)"
-                hint="OpenAI embeddings are billed to your account. Without a connection, approved documents use keyword retrieval."
-              >
-                <select
-                  value={draft.embedding_connection_id || ""}
-                  onChange={(e) =>
-                    setDraft({
-                      ...draft,
-                      embedding_connection_id: e.target.value,
-                    })
-                  }
-                >
-                  <option value="">Keyword search only</option>
-                  {connections
-                    .filter((c) => c.active && c.provider === "openai")
-                    .map((c) => (
-                      <option key={c.id} value={c.id}>
-                        {c.name}
-                      </option>
-                    ))}
-                </select>
-              </Field>
+              {knowledge.data?.hybrid_enabled ? (
+                <div className="info-panel">
+                  <p>
+                    Documents use local hybrid search automatically. Upload your
+                    references, review processing results, and approve them
+                    before attaching this collection to an agent.
+                  </p>
+                </div>
+              ) : knowledge.isPending ? (
+                <p role="status">Loading knowledge search settings…</p>
+              ) : knowledge.isError ? (
+                <p role="alert">
+                  Search settings are unavailable. You can create the collection
+                  and configure it later.
+                </p>
+              ) : (
+                <>
+                  <Field
+                    label="Semantic search (optional)"
+                    hint="OpenAI embeddings are billed to your account. Without a connection, approved documents use keyword retrieval."
+                  >
+                    <select
+                      value={draft.embedding_connection_id || ""}
+                      onChange={(e) =>
+                        setDraft({
+                          ...draft,
+                          embedding_connection_id: e.target.value,
+                        })
+                      }
+                    >
+                      <option value="">Keyword search only</option>
+                      {connections
+                        .filter((c) => c.active && c.provider === "openai")
+                        .map((c) => (
+                          <option key={c.id} value={c.id}>
+                            {c.name}
+                          </option>
+                        ))}
+                    </select>
+                  </Field>
+                </>
+              )}
             </>
           )}
           {modal === "document" && (

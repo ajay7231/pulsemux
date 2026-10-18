@@ -153,7 +153,7 @@ function handleMessage(msg) {
       break;
     case 'call_ended':
       endCall(); if (msg.message) notice(msg.message); return;
-    case 'transcript': appendMessage('You', msg.text); generating = true; break;
+    case 'transcript': notice(''); appendMessage('You', msg.text); generating = true; break;
     case 'token':
       if (!assistantMessage) assistantMessage = appendMessage('PulseMux assistant', '');
       responseText += msg.delta; assistantMessage.textContent += msg.delta;

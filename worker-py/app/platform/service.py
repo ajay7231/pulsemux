@@ -117,7 +117,8 @@ def public_record(value, exclude=()):
         c.name: getattr(value, c.name)
         for c in value.__table__.columns
         if c.name
-        not in set(exclude) | {"encrypted_secret", "password_hash", "stream_token_hash"}
+        not in set(exclude)
+        | {"encrypted_secret", "password_hash", "stream_token_hash", "ingestion_token"}
     }
 
 
@@ -176,6 +177,7 @@ def knowledge_snapshot(db, workspace_id, collection_ids):
             Document.workspace_id == workspace_id,
             Document.collection_id.in_(collection_ids),
             Document.status == "approved",
+            Document.ingestion_status.in_(["ready", "legacy"]),
         )
     ).all()
     result, size = [], 0
@@ -199,6 +201,9 @@ def knowledge_snapshot(db, workspace_id, collection_ids):
                     "document_id": doc.id,
                     "title": doc.title,
                     "content": chunk.content,
+                    "rag_point_id": (chunk.rag_metadata or {}).get("point_id"),
+                    "headings": (chunk.rag_metadata or {}).get("headings", []),
+                    "page_numbers": (chunk.rag_metadata or {}).get("page_numbers", []),
                     "expires_at": doc.expires_at,
                     "embedding": (
                         [float(v) for v in chunk.embedding]
@@ -220,8 +225,10 @@ def knowledge_hash(snapshot):
 def validate_snapshot(db, workspace_id, snapshot):
     for document_id in {chunk["document_id"] for chunk in snapshot}:
         doc = owned(db, Document, document_id, workspace_id)
-        if doc.status != "approved" or (
-            doc.expires_at and doc.expires_at <= time.time()
+        if (
+            doc.status != "approved"
+            or doc.ingestion_status not in {"ready", "legacy"}
+            or (doc.expires_at and doc.expires_at <= time.time())
         ):
             raise HTTPException(
                 409,

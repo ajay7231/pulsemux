@@ -25,10 +25,6 @@ export function ContactPicker({
       setQuery(search.trim());
       setPage(1);
     }, 250);
-    useEffect(() => {
-      if (contacts.data && page > Math.max(1, contacts.data.pages))
-        setPage(Math.max(1, contacts.data.pages));
-    }, [contacts.data?.pages, page]);
     return () => clearTimeout(timer);
   }, [search]);
   const contacts = useQuery({
@@ -45,6 +41,10 @@ export function ContactPicker({
         signal,
       ),
   });
+  useEffect(() => {
+    if (contacts.data && page > Math.max(1, contacts.data.pages))
+      setPage(Math.max(1, contacts.data.pages));
+  }, [contacts.data?.pages, page]);
   return (
     <div className="contact-picker">
       <label className="field" htmlFor={id}>

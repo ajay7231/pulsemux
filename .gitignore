@@ -40,3 +40,8 @@ worker-py/web/dashboard/
 *.db
 *.db-shm
 *.db-wal
+
+# Clinical RAG storage and downloaded model weights
+deploy/qdrant_storage/
+model_cache/
+**/model_cache/

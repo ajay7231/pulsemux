@@ -13,6 +13,12 @@ type Agent = {
   config: Record<string, any>;
 };
 
+// The call controller owns disabled state. A React disabled prop also suppresses
+// synthetic clicks after the controller enables the underlying DOM button.
+function initiallyDisableCallControl(button: HTMLButtonElement | null) {
+  if (button) button.disabled = true;
+}
+
 export function AgentTest({
   agent,
   voice,
@@ -84,7 +90,7 @@ export function AgentTest({
               <button
                 data-call="btn-mute"
                 className="button"
-                disabled
+                ref={initiallyDisableCallControl}
                 aria-pressed="false"
                 onClick={() => controller.current?.toggleMute()}
               >

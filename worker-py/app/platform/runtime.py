@@ -281,7 +281,10 @@ def session_class():
                 {"sources": [{"id": c["id"], "title": c["title"]} for c in matches]},
             )
             self.system_prompt = self.prompt(
-                "\n\n".join(f'[{c["title"]}] {c["content"]}' for c in matches)
+                "\n\n".join(
+                    f'[{c["title"]} | Section: {" > ".join(c.get("headings", [])) or "General"} | Pages: {", ".join(map(str, c.get("page_numbers", []))) or "not available"}] {c["content"]}'
+                    for c in matches
+                )
             )
             await super().handle_user_speech(user_text, turn_id)
 

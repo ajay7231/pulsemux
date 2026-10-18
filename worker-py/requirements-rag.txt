@@ -1,0 +1,7 @@
+# Python 3.10+ required by Docling; production images use Python 3.12.
+qdrant-client[fastembed]>=1.14.2,<2
+fastembed>=0.7,<1
+docling>=2.43,<3
+docling-core[chunking]>=2.43,<3
+transformers>=4.48,<6
+pydantic>=2.7,<3
