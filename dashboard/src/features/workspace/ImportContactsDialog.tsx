@@ -23,13 +23,13 @@ export function ImportContactsDialog({
         1; missing consent defaults to false. Existing phone numbers are
         skipped.
       </p>
-      <label className="button">
+      <label className="button upload-button">
         <Upload size={16} />
         Choose CSV
         <input
           type="file"
           accept=".csv"
-          hidden
+          className="upload-input"
           onChange={(e) => {
             const file = e.target.files?.[0];
             if (file)

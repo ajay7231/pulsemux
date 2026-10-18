@@ -54,22 +54,75 @@ let detector = new TurnDetector(), sequence = 0, streamSid = null, callSid = nul
 let startedAt = 0, timer = null, playbackEpoch = 0, playbackChain = Promise.resolve();
 let sources = new Set(), assistantMessage = null, responseText = '', receivedAudio = false;
 let fallbackSpeech = false, generating = false, frames = 0, ttsWarning = '';
+let semanticTurns = false, pendingSpeech = false;
+let recognizing = false, reconnectAvailable = false, noiseStatus = '', connectionStage = '';
+let cancelConnect = null;
+let measurement = null, measurements = [];
+const monotonic = () => globalThis.performance?.now() ?? Date.now();
+function recordBoundary(name) {
+  if (measurement && measurement[name] === undefined) measurement[name] = monotonic();
+}
+function recordPlayback(row, provider) {
+  if (!row || row.playback_at !== undefined) return;
+  row.playback_at = monotonic(); row.playback_provider = provider;
+  const speech = $('hud-speech-playback'), commit = $('hud-commit-playback');
+  if (speech && row.speech_end_at !== undefined) speech.textContent = `${Math.round(row.playback_at - row.speech_end_at)} ms`;
+  if (commit && row.commit_notice_at !== undefined) commit.textContent = `${Math.round(row.playback_at - row.commit_notice_at)} ms`;
+}
+function getMeasurements() {
+  return {schema_version: 1, clock: 'browser monotonic',
+    definitions: {speech_end_to_playback_ms: 'Last locally voiced frame to AudioBufferSource.start or browser speech onstart; includes VAD wait and decode.',
+      commit_notice_to_playback_ms: 'Commit reference to local playback start; see per-row commit_origin. Server notices exclude notification transit time.',
+      speech_end_to_first_text_ms: 'Last locally voiced frame to first response content received.'},
+    limitations: ['Playback API start is not a measurement of acoustic speaker output or carrier delivery.',
+      'No microphone audio, transcript, patient data, provider keys or agent configuration is exported.',
+      'Continue/interrupted/empty/error turns are retained; missing measurements remain null.'],
+    settings: {semantic_turns: semanticTurns, stt_engine: $('select-stt').value, voice_id: $('select-voice').value},
+    rows: measurements.map(row => {
+      const elapsed = (end, start) => row[end] !== undefined && row[start] !== undefined ? Math.round((row[end] - row[start]) * 10) / 10 : null;
+      return {turn_id: row.turn_id, kind: row.kind, outcome: row.outcome,
+        commit_origin: row.commit_origin || null,
+        playback_provider: row.playback_provider || null,
+        speech_end_to_commit_notice_ms: elapsed('commit_notice_at', 'speech_end_at'),
+        speech_end_to_first_text_ms: elapsed('text_at', 'speech_end_at'),
+        speech_end_to_playback_ms: elapsed('playback_at', 'speech_end_at'),
+        commit_notice_to_playback_ms: elapsed('playback_at', 'commit_notice_at')};
+    })};
+}
+function downloadMeasurements() {
+  const url = URL.createObjectURL(new Blob([JSON.stringify(getMeasurements(), null, 2)], {type: 'application/json'}));
+  const link = document.createElement('a'); link.href = url; link.download = 'pulsemux-call-timings.json';
+  link.click(); setTimeout(() => URL.revokeObjectURL(url), 0);
+}
 const newId = () => crypto.randomUUID();
 const send = msg => { if (ws?.readyState === WebSocket.OPEN) ws.send(JSON.stringify(msg)); };
 function notice(text) { $('call-notice').textContent = text; }
 function status(title, description) {
-  $('status-title').textContent = title;
-  if (description) $('status-desc').textContent = description;
+  if ($('status-title').textContent !== title) $('status-title').textContent = title;
+  if (description && $('status-desc').textContent !== description) $('status-desc').textContent = description;
+}
+function showInterim(text = '') {
+  const preview = $('interim-container'), body = $('interim-text');
+  if (!preview || !body) return;
+  body.textContent = text;
+  preview.hidden = !text;
 }
 function renderState() {
   const speaking = sources.size > 0 || globalThis.speechSynthesis?.speaking;
   $('orb-core').className = 'orb' + (speaking ? ' orb-state-speaking' : calling && detector.speaking ? ' orb-state-listening' : '');
+  if (starting && !calling) {
+    status(connectionStage === 'microphone' ? 'Checking microphone…' : reconnectAvailable ? 'Reconnecting…' : 'Connecting…',
+      connectionStage === 'microphone' ? 'Allow microphone access to start your test.' : 'Starting a new test call.');
+    return;
+  }
   if (!calling) return;
   if (endingCall) status('Ending call…', 'The call will disconnect after the goodbye.');
+  else if (!callAcknowledged) status(reconnectAvailable ? 'Reconnecting…' : 'Connecting to agent…', 'Waiting for the call server.');
   else if (muted) status('Microphone muted', 'Unmute whenever you are ready to speak.');
   else if (detector.calibration > 0) status('Adjusting to your room…', 'Keep quiet for a moment while we measure background noise.');
   else if (detector.speaking) status('Listening to you', 'Pause naturally when you finish.');
   else if (speaking) status('Assistant speaking', 'You can interrupt by speaking at any time.');
+  else if (recognizing) status('Transcribing…', 'Finishing speech recognition. Your microphone stays open.');
   else if (generating) status('Assistant is thinking…', 'Your microphone stays open.');
   else status('Listening', 'Speak naturally. Pauses send your turn automatically.');
 }
@@ -78,11 +131,16 @@ function stopPlayback() {
   for (const source of sources) { try { source.stop(); } catch {} }
   sources.clear(); globalThis.speechSynthesis?.cancel();
   playbackChain = Promise.resolve();
-  assistantMessage = null; generating = false;
+  assistantMessage = null; generating = false; recognizing = false;
 }
 function beginTurn() {
+  if (measurement?.outcome === 'pending') measurement.outcome = pendingSpeech ? 'continued' : 'interrupted';
   stopPlayback(); turnId = newId(); responseText = ''; receivedAudio = false;
-  fallbackSpeech = false;
+  measurement = {turn_id: turnId, kind: 'speech', outcome: 'pending'};
+  measurements.push(measurement); if (measurements.length > 1000) measurements.shift();
+  if ($('btn-export')) $('btn-export').disabled = false;
+  fallbackSpeech = false; pendingSpeech = false;
+  showInterim();
 }
 function appendMessage(speaker, text) {
   const bubble = document.createElement('div');
@@ -97,6 +155,7 @@ function appendMessage(speaker, text) {
 }
 function queueAudio(base64) {
   receivedAudio = true;
+  const row = measurement;
   const epoch = playbackEpoch;
   playbackChain = playbackChain.then(async () => {
     if (!calling || epoch !== playbackEpoch) return;
@@ -110,13 +169,14 @@ function queueAudio(base64) {
       source.connect(lowpass).connect(context.destination);
       sources.add(source); renderState();
       source.onended = () => { sources.delete(source); lowpass.disconnect(); resolve(); renderState(); };
-      source.start();
+      source.start(); recordPlayback(row, 'selected_tts');
     });
   }).catch(() => { notice('Audio playback failed. The response is available in the transcript.'); });
 }
 function markCallEnding() {
   endingCall = true;
   generating = false;
+  recognizing = false; pendingSpeech = false; showInterim();
   notice('');
   // Ignore microphone noise/echo while draining the farewell audio.
   detector.reset();
@@ -135,9 +195,10 @@ function finishCallAfterPlayback(completedTurn, browserPlayback = Promise.resolv
   });
 }
 function speakBrowserResponse(text) {
+  const row = measurement;
   return new Promise(resolve => {
     const utterance = new SpeechSynthesisUtterance(text);
-    utterance.onstart = renderState;
+    utterance.onstart = () => { recordPlayback(row, 'browser_fallback'); renderState(); };
     utterance.onend = utterance.onerror = () => { resolve(); renderState(); };
     try { speechSynthesis.speak(utterance); } catch { resolve(); }
   });
@@ -149,12 +210,26 @@ function handleMessage(msg) {
   switch (msg.type) {
     case 'call_started':
       callAcknowledged = true;
-      if (msg.settings) detector.pauseFrames = Math.round(msg.settings.end_pause_ms / 20);
+      reconnectAvailable = false; generating = true;
+      $('connection-status').textContent = 'CALL CONNECTED';
+      $('connection-status').style.color = 'var(--emerald)';
+      semanticTurns = msg.turn_detection?.semantic === true;
+      if (msg.settings) detector.pauseFrames = Math.ceil((msg.turn_detection?.candidate_pause_ms || msg.settings.end_pause_ms) / 20);
+      break;
+    case 'turn_committed':
+      if (measurement) measurement.commit_origin = 'server_notice';
+      recordBoundary('commit_notice_at');
+      pendingSpeech = false; recognizing = true; generating = false;
+      if (msg.forced) { detector.speaking = false; detector.attack = 0; }
       break;
     case 'call_ended':
-      endCall(); if (msg.message) notice(msg.message); return;
-    case 'transcript': notice(''); appendMessage('You', msg.text); generating = true; break;
+      endCall({connectionLost: msg.reason === 'recognition_failure'}); if (msg.message) notice(msg.message); return;
+    case 'transcript_interim':
+      if (!muted && !endingCall) showInterim(msg.text);
+      break;
+    case 'transcript': showInterim(); recognizing = false; pendingSpeech = false; notice(''); appendMessage('You', msg.text); generating = true; break;
     case 'token':
+      recordBoundary('text_at');
       if (!assistantMessage) assistantMessage = appendMessage('PulseMux assistant', '');
       responseText += msg.delta; assistantMessage.textContent += msg.delta;
       $('messages-container').scrollTop = $('messages-container').scrollHeight; break;
@@ -165,8 +240,9 @@ function handleMessage(msg) {
     case 'audio_unavailable': fallbackSpeech = true; break;
     case 'call_ending': markCallEnding(); break;
     case 'turn_complete': {
+      if (measurement) measurement.outcome = 'generation_completed';
       let browserPlayback = Promise.resolve();
-      generating = false; assistantMessage = null;
+      generating = false; recognizing = false; assistantMessage = null;
       $('hud-total').textContent = `${msg.total_turn_ms} ms`;
       if (fallbackSpeech && !receivedAudio && responseText) {
         notice(ttsWarning || 'Selected TTS is unavailable. Using your browser voice for this call.');
@@ -182,7 +258,8 @@ function handleMessage(msg) {
     case 'telemetry_stt': $('hud-stt').textContent = `${msg.latency_ms} ms`; break;
     case 'telemetry_ttft': $('hud-ttft').textContent = `${msg.ttft_ms} ms`; break;
     case 'stt_empty': case 'error':
-      generating = false;
+      if (measurement) measurement.outcome = msg.type;
+      generating = false; recognizing = false; pendingSpeech = false; showInterim();
       if (msg.type === 'error' && !callAcknowledged) endCall();
       notice(msg.message); break;
     // An interrupt acknowledgement never sends another interrupt.
@@ -195,14 +272,17 @@ async function connect() {
   ws = socket;
   await new Promise((resolve, reject) => {
     const timeout = setTimeout(() => { socket.close(); reject(new Error('The voice server did not respond.')); }, 8000);
+    cancelConnect = () => { clearTimeout(timeout); reject(new Error('Call cancelled.')); };
     socket.onopen = () => { clearTimeout(timeout); resolve(); };
     socket.onerror = () => { clearTimeout(timeout); reject(new Error('Cannot connect to the voice server.')); };
     socket.onclose = (event) => {
       clearTimeout(timeout); reject(new Error('Voice connection closed.'));
-      if (calling) { endCall(); notice(event.code === 4401 ? 'Sign in to your workspace and open the agent test again.' : 'Connection lost. Start a new call to reconnect.'); }
+      if (ws !== socket) return;
+      if (calling) { endCall({connectionLost: ![4401, 4403].includes(event.code)}); notice([4401, 4403].includes(event.code) ? 'Sign in to your workspace and open the agent test again.' : 'Connection lost. Reconnect to start a new test call.'); }
     };
-    socket.onmessage = e => handleMessage(JSON.parse(e.data));
+    socket.onmessage = e => { if (ws === socket && !disposed) handleMessage(JSON.parse(e.data)); };
   });
+  cancelConnect = null;
 }
 function updateConfig() {
   const voice = $('select-voice').value;
@@ -215,7 +295,7 @@ async function toggleCall() {
   if (starting || disposed) return;
   if (calling) { endCall(); return; }
   const attempt = ++generation;
-  starting = true; $('btn-record').disabled = true; notice('');
+  starting = true; connectionStage = 'microphone'; $('btn-record').disabled = true; notice(''); showInterim(); renderState();
   try {
     if (!navigator.mediaDevices?.getUserMedia) throw new Error('Microphone access requires localhost or HTTPS.');
     const audioContext = new AudioContext(); context = audioContext; await audioContext.resume();
@@ -233,16 +313,20 @@ async function toggleCall() {
     const track = stream.getAudioTracks()[0];
     track.onended = () => { if (calling) { endCall(); notice('Microphone disconnected.'); } };
     const settings = track.getSettings();
-    $('noise-status').textContent = settings.noiseSuppression === true ? 'Noise suppression active' : settings.noiseSuppression === false ? 'Noise suppression off · adaptive gate active' : 'Adaptive noise gate active';
+    noiseStatus = settings.noiseSuppression === true ? 'Noise suppression active' : settings.noiseSuppression === false ? 'Noise suppression off · adaptive gate active' : 'Adaptive noise gate active';
+    $('noise-status').textContent = noiseStatus;
     await context.audioWorklet.addModule('/static/mic-worklet.js');
     if (disposed || attempt !== generation) return;
+    connectionStage = 'socket'; renderState();
     await connect();
     if (disposed || attempt !== generation) return;
     calling = true; muted = false; endingCall = false; callAcknowledged = false; frames = 0; sequence = 1;
-    detector.reset(); beginTurn();
+    semanticTurns = false; pendingSpeech = false; detector.pauseFrames = 40;
+    measurements = []; measurement = null;
+    detector.reset(); beginTurn(); measurement.kind = 'greeting';
     streamSid = 'MZ' + newId().replaceAll('-', ''); callSid = 'CA' + newId().replaceAll('-', '');
     $('messages-container').replaceChildren();
-    for (const id of ['hud-stt', 'hud-ttft', 'hud-tts', 'hud-total']) $(id).textContent = '— ms';
+    for (const id of ['hud-stt', 'hud-ttft', 'hud-tts', 'hud-total', 'hud-speech-playback', 'hud-commit-playback']) if ($(id)) $(id).textContent = '— ms';
     $('triage-badge').className = 'triage-indicator triage-routine';
     $('triage-label').textContent = 'CLINICAL TRIAGE STANDBY';
     updateConfig();
@@ -263,30 +347,33 @@ async function toggleCall() {
     $('user-text-input').disabled = false; $('btn-send').disabled = false;
     $('select-stt').disabled = true; $('select-voice').disabled = true;
     $('noise-suppression').disabled = true;
-    $('connection-status').textContent = 'CALL CONNECTED';
-    $('connection-status').style.color = 'var(--emerald)';
+    $('connection-status').textContent = 'CALL CONNECTING';
+    $('connection-status').style.color = 'var(--text-muted)';
     renderState();
   } catch (error) {
-    if (disposed) return;
-    endCall(); notice(error.name === 'NotAllowedError' ? 'Microphone permission was denied. Allow access and start the call again.' : error.message);
+    if (disposed || attempt !== generation) return;
+    endCall({connectionLost: connectionStage === 'socket'}); notice(error.name === 'NotAllowedError' ? 'Microphone permission was denied. Allow access and start the call again.' : error.message);
   } finally { starting = false; $('btn-record').disabled = false; }
 }
 function processFrame(frame) {
-  if (!calling || muted || endingCall) return;
+  if (!calling || !callAcknowledged || muted || endingCall) return;
   if (ws?.readyState !== WebSocket.OPEN || ws.bufferedAmount > 256000) {
-    endCall(); notice('The audio connection is too slow. Start a new call.'); return;
+    endCall({connectionLost: true}); notice('The audio connection is too slow. Reconnect to start a new test call.'); return;
   }
   const rms = Math.sqrt(frame.reduce((sum, value) => sum + value * value, 0) / frame.length);
   const event = detector.feed(rms);
   $('mic-level').style.width = `${Math.min(100, rms * 600)}%`;
   $('noise-level').textContent = `${Math.round(20 * Math.log10(Math.max(detector.noise, 0.00001)))} dB`;
   if (event === 'start') { beginTurn(); send({type: 'speech_start', turn_id: turnId}); }
+  if (measurement && (detector.speaking || event === 'end') && detector.silence === 0) measurement.speech_end_at = monotonic();
   let binary = '';
   for (const value of frame) binary += String.fromCharCode(linearToMuLaw(value));
   send({event: 'media', sequenceNumber: String(sequence++), streamSid,
     media: {track: 'inbound', chunk: String(++frames), timestamp: String((frames - 1) * 20), payload: btoa(binary)}});
   if (event === 'end') {
-    generating = true; send({type: 'speech_end', turn_id: turnId});
+    if (!semanticTurns) { recordBoundary('commit_notice_at'); if (measurement) measurement.commit_origin = 'local_fixed_boundary'; }
+    pendingSpeech = semanticTurns; recognizing = !semanticTurns; generating = false;
+    send({type: 'speech_end', turn_id: turnId, pause_ms: detector.silence * 20, force: detector.duration >= 1000});
   }
   renderState();
 }
@@ -294,40 +381,52 @@ function updateClock() {
   const seconds = Math.floor((Date.now() - startedAt) / 1000);
   $('call-duration').textContent = `${String(Math.floor(seconds / 60)).padStart(2, '0')}:${String(seconds % 60).padStart(2, '0')}`;
 }
-function endCall() {
+function endCall({connectionLost = false} = {}) {
+  if (measurement?.outcome === 'pending') measurement.outcome = connectionLost ? 'disconnected' : 'stopped';
   generation++;
   const wasCalling = calling; calling = false; endingCall = false; turnId = null;
   clearTimeout(hangupTimer); hangupTimer = null;
   stopPlayback(); clearInterval(timer);
+  cancelConnect?.(); cancelConnect = null;
+  recognizing = false; pendingSpeech = false; showInterim();
+  reconnectAvailable = connectionLost;
   if (wasCalling) send({event: 'stop', streamSid, stop: {callSid}});
-  if (ws) { ws.onclose = null; ws.close(); ws = null; }
+  if (ws) { ws.onclose = null; ws.onmessage = null; ws.onerror = null; ws.onopen = null; ws.close(); ws = null; }
   if (capture) { capture.port.onmessage = null; capture.disconnect(); capture = null; }
   if (stream) { stream.getTracks().forEach(t => t.stop()); stream = null; }
   if (context) { context.close().catch(() => {}); context = null; }
-  $('btn-record').classList.remove('recording'); $('btn-record-text').textContent = 'Start call';
+  $('btn-record').classList.remove('recording'); $('btn-record-text').textContent = connectionLost ? 'Reconnect' : 'Start call';
   $('btn-mute').disabled = true; $('user-text-input').disabled = true; $('btn-send').disabled = true;
   const managed = !!options.agent;
   $('select-stt').disabled = managed; $('select-voice').disabled = managed; $('noise-suppression').disabled = false;
   $('connection-status').textContent = 'CALL OFFLINE'; $('connection-status').style.color = 'var(--text-muted)';
   $('noise-status').textContent = 'Microphone off'; $('mic-level').style.width = '0%';
   $('orb-core').className = 'orb';
-  status(wasCalling ? 'Call ended' : 'Ready when you are', 'Start a call, then talk naturally. No need to press anything between turns.');
+  status(connectionLost ? 'Disconnected' : wasCalling ? 'Call ended' : 'Ready when you are', connectionLost ? 'Reconnect to start a new test call.' : 'Start a call, then talk naturally. No need to press anything between turns.');
 }
 function toggleMute() {
   if (!calling || endingCall) return;
   muted = !muted;
   $('btn-mute').setAttribute('aria-pressed', String(muted));
-  if (muted && detector.speaking) { send({type: 'speech_end', turn_id: turnId}); generating = true; }
+  if (muted && (detector.speaking || pendingSpeech)) {
+    send({type: 'speech_end', turn_id: turnId, pause_ms: 0, force: true});
+    pendingSpeech = false; recognizing = true; generating = false;
+  }
+  showInterim();
   stream.getAudioTracks().forEach(t => { t.enabled = !muted; });
   detector.reset();
   $('btn-mute').textContent = muted ? 'Unmute mic' : 'Mute mic';
   $('btn-mute').setAttribute('aria-pressed', String(muted));
   $('mic-level').style.width = '0%'; renderState();
+  $('noise-status').textContent = muted ? 'Microphone muted' : noiseStatus;
+  $('noise-level').textContent = '— dB';
 }
 function sendTextMessage() {
   if (!calling || endingCall) return;
   const text = $('user-text-input').value.trim(); if (!text) return;
   beginTurn(); detector.reset(); generating = true;
+  measurement.kind = 'typed'; recordBoundary('commit_notice_at');
+  measurement.commit_origin = 'typed_submit';
   send({type: 'user_text', text, turn_id: turnId}); $('user-text-input').value = ''; renderState();
 }
 function handleKey(e) { if (e.key === 'Enter') sendTextMessage(); }
@@ -339,7 +438,7 @@ if (options.agent) {
   $('select-stt').disabled = true; $('select-voice').disabled = true;
 }
 return {
-  toggleCall, toggleMute, sendTextMessage, handleKey,
+  toggleCall, toggleMute, sendTextMessage, handleKey, getMeasurements, downloadMeasurements,
   destroy() {
     disposed = true;
     endCall();

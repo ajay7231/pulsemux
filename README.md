@@ -189,16 +189,19 @@ endpoint remains separate.
 Audio capture uses AudioWorklet, browser echo cancellation, optional browser noise
 suppression, a telephone bandwidth filter, and an adaptive energy gate. Keep quiet
 for the first half-second to calibrate. Six voiced frames (120ms) trigger speech;
-a pause of 800ms submits the utterance; continuous speech is split at 20 seconds.
+streaming Deepgram uses a short pause candidate around 350ms and allows up to
+1,200ms for unfinished thoughts. Continuous turns are bounded to 20 seconds.
 A 300ms pre-roll preserves the beginning of each utterance. Short clicks and steady
 room noise are rejected, but energy detection is not a neural speech classifier:
 TV voices and loud changing noise can still trigger it. Headphones improve echo
 handling. Browser noise suppression support is reported in the UI.
 
-ASR runs on each automatically completed utterance using the selected Deepgram or
-Groq provider (Groq is also the fallback if Deepgram fails). Audio frames stream
-continuously, but transcription is utterance-based rather than streaming partial
-ASR. Provider/network latency still applies; no sub-500ms guarantee is implied.
+Deepgram recognition streams continuously over one connection per call. Groq is
+an explicit utterance-based alternative; providers do not switch automatically.
+Groq and the rollback paths retain the saved fixed pause (800ms by default).
+See [semantic turn completion](docs/SEMANTIC_TURN_COMPLETION.md) for rules,
+configuration and validation. Provider/network latency still applies; no
+sub-500ms guarantee is implied.
 Configure `DEEPGRAM_API_KEY` and/or `GROQ_API_KEY` in `.env`. Groq is required for
 AI-generated answers. Without it, the existing canned responses are used. Local
 Kokoro model files are optional: if absent, the simulator reports that it is using

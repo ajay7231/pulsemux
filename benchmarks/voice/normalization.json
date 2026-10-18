@@ -1,0 +1,20 @@
+{
+  "version": "synthetic-en-v1",
+  "description": "Explicit formatting equivalences for this synthetic corpus. Drug names are never corrected or aliased. Review separately from clinical meaning.",
+  "replacements": [
+    ["one hundred and fifty five", "155"],
+    ["one hundred fifty five", "155"],
+    ["one fifty five", "155"],
+    ["nineteen eighty five", "1985"],
+    ["ninety five", "95"],
+    ["ninety", "90"],
+    ["milligrams", "mg"],
+    ["milligram", "mg"],
+    ["call back", "callback"],
+    ["the fifth of march", "5 march"],
+    ["fifth of march", "5 march"],
+    ["march 5th", "5 march"],
+    ["march 5", "5 march"],
+    ["fifth", "5"]
+  ]
+}

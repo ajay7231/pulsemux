@@ -41,12 +41,14 @@ function audioFixture() {
       createGain = node;
     },
   );
+  const worklets: any[] = [];
   vi.stubGlobal(
     "AudioWorkletNode",
     class {
       port = { onmessage: null };
       connect = vi.fn().mockReturnThis();
       disconnect = vi.fn();
+      constructor() { worklets.push(this); }
     },
   );
   const sent: any[] = [];
@@ -70,7 +72,7 @@ function audioFixture() {
       }
     },
   );
-  return { stop, close, sent, sockets, getUserMedia, microphone, track };
+  return { stop, close, sent, sockets, worklets, getUserMedia, microphone, track };
 }
 afterEach(() => {
   cleanup();
@@ -136,4 +138,93 @@ test("leaving while microphone permission is pending stops any late stream", asy
   await act(async () => allow(f.microphone));
   expect(f.stop).toHaveBeenCalledOnce();
   expect(f.sockets).toHaveLength(0);
+});
+
+test("recognition preview updates outside history and disappears on final transcript", async () => {
+  const f = audioFixture();
+  const person = userEvent.setup();
+  render(<AgentTest agent={agent} voice="Bella" onClose={() => {}} />);
+  await person.click(screen.getByRole("button", { name: /Start call/ }));
+  const preview = screen.getByLabelText("Provisional speech recognition") as HTMLElement;
+  const history = screen.getByRole("log", { name: "Conversation messages" });
+  const emit = (value: any) => act(() => f.sockets[0].onmessage({data: JSON.stringify(value)}));
+  emit({type: "transcript_interim", text: "I have been feeling"});
+  expect(preview.hidden).toBe(false);
+  expect(history.children).toHaveLength(0);
+  emit({type: "transcript_interim", text: "I have been feeling dizzy."});
+  expect(preview.textContent).toContain("I have been feeling dizzy.");
+  expect(history.children).toHaveLength(0);
+  emit({type: "transcript", text: "I have been feeling dizzy."});
+  expect(preview.hidden).toBe(true);
+  expect(history.children).toHaveLength(1);
+  emit({type: "transcript_interim", turn_id: "stale", text: "Old recognition"});
+  expect(preview.hidden).toBe(true);
+  expect(screen.queryByText("Old recognition")).toBeNull();
+});
+
+test("server acknowledgement gates media and mute blocks real worklet frames", async () => {
+  const f = audioFixture();
+  const person = userEvent.setup();
+  render(<AgentTest agent={agent} voice="Bella" onClose={() => {}} />);
+  await person.click(screen.getByRole("button", { name: /Start call/ }));
+  const frame = () => f.worklets[0].port.onmessage({data: new Float32Array(160)});
+  act(frame);
+  expect(f.sent.filter(m => m.event === "media")).toHaveLength(0);
+  expect(screen.getByText("CALL CONNECTING")).toBeTruthy();
+  act(() => f.sockets[0].onmessage({data: JSON.stringify({type: "call_started"})}));
+  expect(screen.getByText("CALL CONNECTED")).toBeTruthy();
+  act(frame);
+  expect(f.sent.filter(m => m.event === "media")).toHaveLength(1);
+  await person.click(screen.getByRole("button", {name: "Mute mic"}));
+  act(frame);
+  expect(f.sent.filter(m => m.event === "media")).toHaveLength(1);
+  expect(f.track.enabled).toBe(false);
+  await person.click(screen.getByRole("button", {name: "Unmute mic"}));
+  act(frame);
+  expect(f.sent.filter(m => m.event === "media")).toHaveLength(2);
+});
+
+test("transcribing and thinking reflect pipeline events and mute clears preview", async () => {
+  const f = audioFixture();
+  const person = userEvent.setup();
+  render(<AgentTest agent={agent} voice="Bella" onClose={() => {}} />);
+  await person.click(screen.getByRole("button", {name: /Start call/}));
+  const emit = (value: any) => act(() => f.sockets[0].onmessage({data: JSON.stringify(value)}));
+  emit({type: "call_started"});
+  act(() => { for (let i = 0; i < 25; i++) f.worklets[0].port.onmessage({data: new Float32Array(160)}); });
+  emit({type: "turn_committed"});
+  expect(screen.getByRole("heading", {name: "Transcribing…"})).toBeTruthy();
+  emit({type: "transcript", text: "Hello."});
+  expect(screen.getByRole("heading", {name: "Assistant is thinking…"})).toBeTruthy();
+  emit({type: "turn_complete", total_turn_ms: 42});
+  expect(screen.getByRole("heading", {name: "Listening"})).toBeTruthy();
+  emit({type: "transcript_interim", text: "Provisional words"});
+  await person.click(screen.getByRole("button", {name: "Mute mic"}));
+  expect(screen.getByRole("heading", {name: "Microphone muted"})).toBeTruthy();
+  expect((screen.getByLabelText("Provisional speech recognition") as HTMLElement).hidden).toBe(true);
+  emit({type: "transcript_interim", text: "Late preview"});
+  expect(screen.queryByText("Late preview")).toBeNull();
+});
+
+test("recognition failure releases resources and reconnect starts a fresh call", async () => {
+  const f = audioFixture();
+  const person = userEvent.setup();
+  render(<AgentTest agent={agent} voice="Bella" onClose={() => {}} />);
+  await person.click(screen.getByRole("button", {name: /Start call/}));
+  const oldMessage = f.sockets[0].onmessage;
+  act(() => oldMessage({data: JSON.stringify({type: "call_ended", reason: "recognition_failure"})}));
+  expect(screen.getByRole("heading", {name: "Disconnected"})).toBeTruthy();
+  expect(f.stop).toHaveBeenCalledOnce();
+  expect(f.close).toHaveBeenCalledOnce();
+  expect(f.worklets[0].disconnect).toHaveBeenCalledOnce();
+  expect(f.worklets[0].port.onmessage).toBeNull();
+  await person.click(screen.getByRole("button", {name: /Reconnect/}));
+  expect(f.sockets).toHaveLength(2);
+  expect(screen.getByRole("heading", {name: "Reconnecting…"})).toBeTruthy();
+  act(() => oldMessage({data: JSON.stringify({type: "call_ended"})}));
+  expect(screen.getByRole("button", {name: /End call/})).toBeTruthy();
+  act(() => f.sockets[1].onmessage({data: JSON.stringify({type: "call_started"})}));
+  expect(screen.getByText("CALL CONNECTED")).toBeTruthy();
+  expect(f.sent.filter(m => m.event === "start")).toHaveLength(2);
+  expect(f.sent.filter(m => m.type === "user_text")).toHaveLength(0);
 });

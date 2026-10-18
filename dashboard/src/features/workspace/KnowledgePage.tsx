@@ -42,7 +42,7 @@ export function KnowledgePage({
     </div>
   ) : (
     <section className="card">
-      <Empty title="Give your agents a source of truth">
+      <Empty title="No collections to display">
         Create a collection for policies, FAQs, or approved patient
         instructions.
       </Empty>

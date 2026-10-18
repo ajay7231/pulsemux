@@ -27,22 +27,29 @@ class AudioTests(unittest.TestCase):
             self.assertEqual(client.get('/static/mic-worklet.js').status_code, 200)
 
     def test_hangup_intent_is_conservative(self):
-        for text in ('End the call, please.', 'Can you hang up please?', 'Goodbye!', 'Please end this call now.'):
+        for text in ('End the call, please.', 'Can you hang up please?', 'Goodbye!', 'Please end this call now.',
+                     'Please cut the call.', 'Yeah. Please hang up.', 'Please hang up the call.',
+                     'Okay, could you end our call please?'):
             with self.subTest(text=text):
                 self.assertTrue(user_requested_hangup(text))
-        for text in ("Don't end the call", 'How do I end the call?', 'The last call ended', 'No, thank you, but my head hurts', 'Thank you', 'No'):
+        for text in ("Don't end the call", 'How do I end the call?', 'The last call ended', 'No, thank you, but my head hurts', 'Thank you', 'No',
+                     "Please don't hang up", 'Yeah please hang up after answering my question',
+                     'The nurse asked me to cut the call', 'Can you explain how to hang up the call?'):
             with self.subTest(text=text):
                 self.assertFalse(user_requested_hangup(text))
         self.assertFalse(user_requested_hangup('No. Thank you.', 'Do you have a fever?'))
         self.assertTrue(user_requested_hangup('No. Thank you.', 'Do you have any other symptoms, or would you like to book an appointment?'))
         self.assertTrue(assistant_said_farewell('You are welcome. Have a good day.'))
+        self.assertTrue(assistant_said_farewell("You're very welcome. Take care of yourself."))
+        self.assertFalse(assistant_said_farewell('Can I help with anything else? Take care of yourself.'))
         self.assertFalse(assistant_said_farewell('Would you like to book an appointment?'))
 
     def test_explicit_hangup_produces_action_without_llm(self):
         class Socket:
             def __init__(self): self.messages = []
             async def send_text(self, text): self.messages.append(json.loads(text))
-        for text, previous in [('End the call, please.', ''), ('No. Thank you.', 'Do you have any other symptoms?')]:
+        for text, previous in [('End the call, please.', ''), ('No. Thank you.', 'Do you have any other symptoms?'),
+                               ('Please cut the call.', ''), ('Yeah. Please hang up.', '')]:
             socket = Socket()
             session = VoiceSession(socket)
             session.messages = [{"role": "assistant", "content": previous}]

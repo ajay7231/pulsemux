@@ -1,0 +1,736 @@
+{
+  "mode": "offline_emulated_provider_lifecycle",
+  "calls": 80,
+  "concurrency_limit": 20,
+  "peak_active_sessions": 20,
+  "tasks_before": 1,
+  "tasks_after": 1,
+  "failed_cases": 0,
+  "rows": [
+    {
+      "case": "hangup_during_pending",
+      "index": 2,
+      "passed": true,
+      "responses": 0,
+      "peak_backlog_frames": 65,
+      "provider_closed": true,
+      "pending_tasks": 0
+    },
+    {
+      "case": "hangup_during_pending",
+      "index": 6,
+      "passed": true,
+      "responses": 0,
+      "peak_backlog_frames": 65,
+      "provider_closed": true,
+      "pending_tasks": 0
+    },
+    {
+      "case": "hangup_during_pending",
+      "index": 10,
+      "passed": true,
+      "responses": 0,
+      "peak_backlog_frames": 65,
+      "provider_closed": true,
+      "pending_tasks": 0
+    },
+    {
+      "case": "hangup_during_pending",
+      "index": 14,
+      "passed": true,
+      "responses": 0,
+      "peak_backlog_frames": 65,
+      "provider_closed": true,
+      "pending_tasks": 0
+    },
+    {
+      "case": "hangup_during_pending",
+      "index": 18,
+      "passed": true,
+      "responses": 0,
+      "peak_backlog_frames": 65,
+      "provider_closed": true,
+      "pending_tasks": 0
+    },
+    {
+      "case": "hangup_during_pending",
+      "index": 22,
+      "passed": true,
+      "responses": 0,
+      "peak_backlog_frames": 65,
+      "provider_closed": true,
+      "pending_tasks": 0
+    },
+    {
+      "case": "provider_disconnect",
+      "index": 1,
+      "passed": true,
+      "responses": 0,
+      "peak_backlog_frames": 65,
+      "provider_closed": true,
+      "pending_tasks": 0
+    },
+    {
+      "case": "provider_disconnect",
+      "index": 5,
+      "passed": true,
+      "responses": 0,
+      "peak_backlog_frames": 65,
+      "provider_closed": true,
+      "pending_tasks": 0
+    },
+    {
+      "case": "provider_disconnect",
+      "index": 9,
+      "passed": true,
+      "responses": 0,
+      "peak_backlog_frames": 65,
+      "provider_closed": true,
+      "pending_tasks": 0
+    },
+    {
+      "case": "provider_disconnect",
+      "index": 13,
+      "passed": true,
+      "responses": 0,
+      "peak_backlog_frames": 65,
+      "provider_closed": true,
+      "pending_tasks": 0
+    },
+    {
+      "case": "provider_disconnect",
+      "index": 17,
+      "passed": true,
+      "responses": 0,
+      "peak_backlog_frames": 65,
+      "provider_closed": true,
+      "pending_tasks": 0
+    },
+    {
+      "case": "hangup_during_pending",
+      "index": 26,
+      "passed": true,
+      "responses": 0,
+      "peak_backlog_frames": 65,
+      "provider_closed": true,
+      "pending_tasks": 0
+    },
+    {
+      "case": "provider_disconnect",
+      "index": 21,
+      "passed": true,
+      "responses": 0,
+      "peak_backlog_frames": 65,
+      "provider_closed": true,
+      "pending_tasks": 0
+    },
+    {
+      "case": "hangup_during_pending",
+      "index": 30,
+      "passed": true,
+      "responses": 0,
+      "peak_backlog_frames": 65,
+      "provider_closed": true,
+      "pending_tasks": 0
+    },
+    {
+      "case": "provider_disconnect",
+      "index": 25,
+      "passed": true,
+      "responses": 0,
+      "peak_backlog_frames": 65,
+      "provider_closed": true,
+      "pending_tasks": 0
+    },
+    {
+      "case": "provider_disconnect",
+      "index": 29,
+      "passed": true,
+      "responses": 0,
+      "peak_backlog_frames": 65,
+      "provider_closed": true,
+      "pending_tasks": 0
+    },
+    {
+      "case": "hangup_during_pending",
+      "index": 34,
+      "passed": true,
+      "responses": 0,
+      "peak_backlog_frames": 65,
+      "provider_closed": true,
+      "pending_tasks": 0
+    },
+    {
+      "case": "provider_disconnect",
+      "index": 33,
+      "passed": true,
+      "responses": 0,
+      "peak_backlog_frames": 65,
+      "provider_closed": true,
+      "pending_tasks": 0
+    },
+    {
+      "case": "provider_disconnect",
+      "index": 37,
+      "passed": true,
+      "responses": 0,
+      "peak_backlog_frames": 65,
+      "provider_closed": true,
+      "pending_tasks": 0
+    },
+    {
+      "case": "hangup_during_pending",
+      "index": 38,
+      "passed": true,
+      "responses": 0,
+      "peak_backlog_frames": 65,
+      "provider_closed": true,
+      "pending_tasks": 0
+    },
+    {
+      "case": "idle_keepalive",
+      "index": 3,
+      "passed": true,
+      "responses": 0,
+      "peak_backlog_frames": 0,
+      "provider_closed": true,
+      "pending_tasks": 0
+    },
+    {
+      "case": "idle_keepalive",
+      "index": 7,
+      "passed": true,
+      "responses": 0,
+      "peak_backlog_frames": 0,
+      "provider_closed": true,
+      "pending_tasks": 0
+    },
+    {
+      "case": "idle_keepalive",
+      "index": 11,
+      "passed": true,
+      "responses": 0,
+      "peak_backlog_frames": 0,
+      "provider_closed": true,
+      "pending_tasks": 0
+    },
+    {
+      "case": "idle_keepalive",
+      "index": 15,
+      "passed": true,
+      "responses": 0,
+      "peak_backlog_frames": 0,
+      "provider_closed": true,
+      "pending_tasks": 0
+    },
+    {
+      "case": "idle_keepalive",
+      "index": 19,
+      "passed": true,
+      "responses": 0,
+      "peak_backlog_frames": 0,
+      "provider_closed": true,
+      "pending_tasks": 0
+    },
+    {
+      "case": "hangup_during_pending",
+      "index": 42,
+      "passed": true,
+      "responses": 0,
+      "peak_backlog_frames": 65,
+      "provider_closed": true,
+      "pending_tasks": 0
+    },
+    {
+      "case": "idle_keepalive",
+      "index": 23,
+      "passed": true,
+      "responses": 0,
+      "peak_backlog_frames": 0,
+      "provider_closed": true,
+      "pending_tasks": 0
+    },
+    {
+      "case": "provider_disconnect",
+      "index": 41,
+      "passed": true,
+      "responses": 0,
+      "peak_backlog_frames": 65,
+      "provider_closed": true,
+      "pending_tasks": 0
+    },
+    {
+      "case": "hangup_during_pending",
+      "index": 46,
+      "passed": true,
+      "responses": 0,
+      "peak_backlog_frames": 65,
+      "provider_closed": true,
+      "pending_tasks": 0
+    },
+    {
+      "case": "provider_disconnect",
+      "index": 45,
+      "passed": true,
+      "responses": 0,
+      "peak_backlog_frames": 65,
+      "provider_closed": true,
+      "pending_tasks": 0
+    },
+    {
+      "case": "idle_keepalive",
+      "index": 27,
+      "passed": true,
+      "responses": 0,
+      "peak_backlog_frames": 0,
+      "provider_closed": true,
+      "pending_tasks": 0
+    },
+    {
+      "case": "hangup_during_pending",
+      "index": 50,
+      "passed": true,
+      "responses": 0,
+      "peak_backlog_frames": 65,
+      "provider_closed": true,
+      "pending_tasks": 0
+    },
+    {
+      "case": "provider_disconnect",
+      "index": 49,
+      "passed": true,
+      "responses": 0,
+      "peak_backlog_frames": 65,
+      "provider_closed": true,
+      "pending_tasks": 0
+    },
+    {
+      "case": "idle_keepalive",
+      "index": 31,
+      "passed": true,
+      "responses": 0,
+      "peak_backlog_frames": 0,
+      "provider_closed": true,
+      "pending_tasks": 0
+    },
+    {
+      "case": "idle_keepalive",
+      "index": 35,
+      "passed": true,
+      "responses": 0,
+      "peak_backlog_frames": 0,
+      "provider_closed": true,
+      "pending_tasks": 0
+    },
+    {
+      "case": "idle_keepalive",
+      "index": 39,
+      "passed": true,
+      "responses": 0,
+      "peak_backlog_frames": 0,
+      "provider_closed": true,
+      "pending_tasks": 0
+    },
+    {
+      "case": "hangup_during_pending",
+      "index": 54,
+      "passed": true,
+      "responses": 0,
+      "peak_backlog_frames": 65,
+      "provider_closed": true,
+      "pending_tasks": 0
+    },
+    {
+      "case": "provider_disconnect",
+      "index": 53,
+      "passed": true,
+      "responses": 0,
+      "peak_backlog_frames": 65,
+      "provider_closed": true,
+      "pending_tasks": 0
+    },
+    {
+      "case": "provider_disconnect",
+      "index": 57,
+      "passed": true,
+      "responses": 0,
+      "peak_backlog_frames": 65,
+      "provider_closed": true,
+      "pending_tasks": 0
+    },
+    {
+      "case": "hangup_during_pending",
+      "index": 58,
+      "passed": true,
+      "responses": 0,
+      "peak_backlog_frames": 65,
+      "provider_closed": true,
+      "pending_tasks": 0
+    },
+    {
+      "case": "idle_keepalive",
+      "index": 43,
+      "passed": true,
+      "responses": 0,
+      "peak_backlog_frames": 0,
+      "provider_closed": true,
+      "pending_tasks": 0
+    },
+    {
+      "case": "idle_keepalive",
+      "index": 47,
+      "passed": true,
+      "responses": 0,
+      "peak_backlog_frames": 0,
+      "provider_closed": true,
+      "pending_tasks": 0
+    },
+    {
+      "case": "idle_keepalive",
+      "index": 51,
+      "passed": true,
+      "responses": 0,
+      "peak_backlog_frames": 0,
+      "provider_closed": true,
+      "pending_tasks": 0
+    },
+    {
+      "case": "hangup_during_pending",
+      "index": 62,
+      "passed": true,
+      "responses": 0,
+      "peak_backlog_frames": 65,
+      "provider_closed": true,
+      "pending_tasks": 0
+    },
+    {
+      "case": "provider_disconnect",
+      "index": 61,
+      "passed": true,
+      "responses": 0,
+      "peak_backlog_frames": 65,
+      "provider_closed": true,
+      "pending_tasks": 0
+    },
+    {
+      "case": "idle_keepalive",
+      "index": 55,
+      "passed": true,
+      "responses": 0,
+      "peak_backlog_frames": 0,
+      "provider_closed": true,
+      "pending_tasks": 0
+    },
+    {
+      "case": "idle_keepalive",
+      "index": 59,
+      "passed": true,
+      "responses": 0,
+      "peak_backlog_frames": 0,
+      "provider_closed": true,
+      "pending_tasks": 0
+    },
+    {
+      "case": "hangup_during_pending",
+      "index": 66,
+      "passed": true,
+      "responses": 0,
+      "peak_backlog_frames": 65,
+      "provider_closed": true,
+      "pending_tasks": 0
+    },
+    {
+      "case": "provider_disconnect",
+      "index": 65,
+      "passed": true,
+      "responses": 0,
+      "peak_backlog_frames": 65,
+      "provider_closed": true,
+      "pending_tasks": 0
+    },
+    {
+      "case": "idle_keepalive",
+      "index": 63,
+      "passed": true,
+      "responses": 0,
+      "peak_backlog_frames": 0,
+      "provider_closed": true,
+      "pending_tasks": 0
+    },
+    {
+      "case": "provider_disconnect",
+      "index": 69,
+      "passed": true,
+      "responses": 0,
+      "peak_backlog_frames": 65,
+      "provider_closed": true,
+      "pending_tasks": 0
+    },
+    {
+      "case": "hangup_during_pending",
+      "index": 70,
+      "passed": true,
+      "responses": 0,
+      "peak_backlog_frames": 65,
+      "provider_closed": true,
+      "pending_tasks": 0
+    },
+    {
+      "case": "idle_keepalive",
+      "index": 67,
+      "passed": true,
+      "responses": 0,
+      "peak_backlog_frames": 0,
+      "provider_closed": true,
+      "pending_tasks": 0
+    },
+    {
+      "case": "idle_keepalive",
+      "index": 71,
+      "passed": true,
+      "responses": 0,
+      "peak_backlog_frames": 0,
+      "provider_closed": true,
+      "pending_tasks": 0
+    },
+    {
+      "case": "provider_disconnect",
+      "index": 73,
+      "passed": true,
+      "responses": 0,
+      "peak_backlog_frames": 65,
+      "provider_closed": true,
+      "pending_tasks": 0
+    },
+    {
+      "case": "hangup_during_pending",
+      "index": 74,
+      "passed": true,
+      "responses": 0,
+      "peak_backlog_frames": 65,
+      "provider_closed": true,
+      "pending_tasks": 0
+    },
+    {
+      "case": "idle_keepalive",
+      "index": 75,
+      "passed": true,
+      "responses": 0,
+      "peak_backlog_frames": 0,
+      "provider_closed": true,
+      "pending_tasks": 0
+    },
+    {
+      "case": "complete",
+      "index": 0,
+      "passed": true,
+      "responses": 1,
+      "peak_backlog_frames": 65,
+      "provider_closed": true,
+      "pending_tasks": 0
+    },
+    {
+      "case": "complete",
+      "index": 4,
+      "passed": true,
+      "responses": 1,
+      "peak_backlog_frames": 65,
+      "provider_closed": true,
+      "pending_tasks": 0
+    },
+    {
+      "case": "complete",
+      "index": 8,
+      "passed": true,
+      "responses": 1,
+      "peak_backlog_frames": 65,
+      "provider_closed": true,
+      "pending_tasks": 0
+    },
+    {
+      "case": "complete",
+      "index": 12,
+      "passed": true,
+      "responses": 1,
+      "peak_backlog_frames": 65,
+      "provider_closed": true,
+      "pending_tasks": 0
+    },
+    {
+      "case": "complete",
+      "index": 16,
+      "passed": true,
+      "responses": 1,
+      "peak_backlog_frames": 65,
+      "provider_closed": true,
+      "pending_tasks": 0
+    },
+    {
+      "case": "complete",
+      "index": 20,
+      "passed": true,
+      "responses": 1,
+      "peak_backlog_frames": 65,
+      "provider_closed": true,
+      "pending_tasks": 0
+    },
+    {
+      "case": "complete",
+      "index": 24,
+      "passed": true,
+      "responses": 1,
+      "peak_backlog_frames": 65,
+      "provider_closed": true,
+      "pending_tasks": 0
+    },
+    {
+      "case": "complete",
+      "index": 28,
+      "passed": true,
+      "responses": 1,
+      "peak_backlog_frames": 65,
+      "provider_closed": true,
+      "pending_tasks": 0
+    },
+    {
+      "case": "complete",
+      "index": 32,
+      "passed": true,
+      "responses": 1,
+      "peak_backlog_frames": 65,
+      "provider_closed": true,
+      "pending_tasks": 0
+    },
+    {
+      "case": "complete",
+      "index": 36,
+      "passed": true,
+      "responses": 1,
+      "peak_backlog_frames": 65,
+      "provider_closed": true,
+      "pending_tasks": 0
+    },
+    {
+      "case": "hangup_during_pending",
+      "index": 78,
+      "passed": true,
+      "responses": 0,
+      "peak_backlog_frames": 65,
+      "provider_closed": true,
+      "pending_tasks": 0
+    },
+    {
+      "case": "provider_disconnect",
+      "index": 77,
+      "passed": true,
+      "responses": 0,
+      "peak_backlog_frames": 65,
+      "provider_closed": true,
+      "pending_tasks": 0
+    },
+    {
+      "case": "complete",
+      "index": 40,
+      "passed": true,
+      "responses": 1,
+      "peak_backlog_frames": 65,
+      "provider_closed": true,
+      "pending_tasks": 0
+    },
+    {
+      "case": "complete",
+      "index": 44,
+      "passed": true,
+      "responses": 1,
+      "peak_backlog_frames": 65,
+      "provider_closed": true,
+      "pending_tasks": 0
+    },
+    {
+      "case": "complete",
+      "index": 48,
+      "passed": true,
+      "responses": 1,
+      "peak_backlog_frames": 65,
+      "provider_closed": true,
+      "pending_tasks": 0
+    },
+    {
+      "case": "complete",
+      "index": 52,
+      "passed": true,
+      "responses": 1,
+      "peak_backlog_frames": 65,
+      "provider_closed": true,
+      "pending_tasks": 0
+    },
+    {
+      "case": "idle_keepalive",
+      "index": 79,
+      "passed": true,
+      "responses": 0,
+      "peak_backlog_frames": 0,
+      "provider_closed": true,
+      "pending_tasks": 0
+    },
+    {
+      "case": "complete",
+      "index": 56,
+      "passed": true,
+      "responses": 1,
+      "peak_backlog_frames": 65,
+      "provider_closed": true,
+      "pending_tasks": 0
+    },
+    {
+      "case": "complete",
+      "index": 60,
+      "passed": true,
+      "responses": 1,
+      "peak_backlog_frames": 65,
+      "provider_closed": true,
+      "pending_tasks": 0
+    },
+    {
+      "case": "complete",
+      "index": 64,
+      "passed": true,
+      "responses": 1,
+      "peak_backlog_frames": 65,
+      "provider_closed": true,
+      "pending_tasks": 0
+    },
+    {
+      "case": "complete",
+      "index": 68,
+      "passed": true,
+      "responses": 1,
+      "peak_backlog_frames": 65,
+      "provider_closed": true,
+      "pending_tasks": 0
+    },
+    {
+      "case": "complete",
+      "index": 72,
+      "passed": true,
+      "responses": 1,
+      "peak_backlog_frames": 65,
+      "provider_closed": true,
+      "pending_tasks": 0
+    },
+    {
+      "case": "complete",
+      "index": 76,
+      "passed": true,
+      "responses": 1,
+      "peak_backlog_frames": 65,
+      "provider_closed": true,
+      "pending_tasks": 0
+    }
+  ],
+  "limitations": [
+    "No external provider, microphone, LLM, RAG or carrier traffic.",
+    "Idle heartbeat time is accelerated; not an endurance or provider billing test.",
+    "Does not establish the original Go gateway concurrency, memory, jitter or latency SLAs."
+  ]
+}

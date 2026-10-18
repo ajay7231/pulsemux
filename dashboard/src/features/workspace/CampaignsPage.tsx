@@ -82,7 +82,7 @@ export function CampaignsPage({
     </div>
   ) : (
     <section className="card">
-      <Empty title="Be there before they need to call">
+      <Empty title="No campaigns to display">
         Create an appointment reminder or follow-up campaign with local calling
         windows and bounded retries.
       </Empty>

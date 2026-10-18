@@ -24,6 +24,12 @@ ENV/
 # Environment secrets
 .env
 *.env
+.env.*
+!.env.example
+!**/.env.example
+*.key
+*.pem
+*.p12
 
 # Local models and venvs
 worker-py/.venv/
@@ -31,6 +37,7 @@ worker-py/models/
 *.onnx
 *.bin
 Plan.md
+plan_*
 node_modules
 
 # Platform local data, secret material, and frontend build dependencies
@@ -45,3 +52,14 @@ worker-py/web/dashboard/
 deploy/qdrant_storage/
 model_cache/
 **/model_cache/
+
+# Local validation recordings, user microphone telemetry, and test output
+benchmarks/**/microphone-*.json
+benchmarks/**/*.wav
+benchmarks/**/*.pcm
+benchmarks/**/*.raw
+*.log
+.pytest_cache/
+coverage/
+playwright-report/
+test-results/

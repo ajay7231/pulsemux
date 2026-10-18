@@ -1,0 +1,63 @@
+{
+  "mode": "live_streaming_synthetic",
+  "generated_at": "2026-10-18T13:37:12Z",
+  "configuration": {
+    "model": "nova-3",
+    "encoding": "mulaw",
+    "sample_rate": 8000,
+    "end_pause_ms": 800,
+    "concurrency": 1
+  },
+  "source_sha256": "0759dc8a191ba4b5b5b74fb18c56bd2a2b506de9ee79a9677be3f4c572b6b7a6",
+  "rows": [
+    {
+      "scenario": "complete_thought",
+      "reference": "I would like to confirm my appointment.",
+      "transcript": "I would like to confirm my appointment.",
+      "critical_terms": [
+        "confirm",
+        "appointment"
+      ],
+      "audio_sha256": "6a89727519cb7ee5048652520259dd7f077b351021ced97c2cb9129cd9238ab0",
+      "boundary_to_final_ms": 474.6,
+      "interim_events": 3
+    },
+    {
+      "scenario": "medication_names",
+      "reference": "My prescription lists ticagrelor, Brilinta, and metoprolol.",
+      "transcript": "My prescription lists ticagrelor, Brilinta, and metoprolol.",
+      "critical_terms": [
+        "ticagrelor",
+        "Brilinta",
+        "metoprolol"
+      ],
+      "audio_sha256": "ca21f80c776b01bbd355ccac3ca046845491b0742b3b87c0ef890a412a01fdc9",
+      "boundary_to_final_ms": 0.27,
+      "interim_events": 4
+    },
+    {
+      "scenario": "numbers_and_units",
+      "reference": "This is a test. The reading is 155 over 95 and the label says 90 milligrams.",
+      "transcript": "This is a test. The reading is 155 over 90 and the label says ninety milligrams.",
+      "critical_terms": [
+        "155",
+        "95",
+        "90",
+        "milligrams"
+      ],
+      "audio_sha256": "098aa2565e5ab327b8d6cff599b5d26cb1bbe8e4c27c4bbfc70def0e0264c8d4",
+      "boundary_to_final_ms": 358.5,
+      "interim_events": 7
+    }
+  ],
+  "connections_opened": 1,
+  "failure_events": [],
+  "closed": true,
+  "pending_tasks": 0,
+  "limitations": [
+    "Three synthetic utterances; not an accuracy benchmark.",
+    "Boundary-to-final wait excludes speech duration and the preceding 800ms pause.",
+    "No LLM, retrieval, clinical reasoning, or browser/carrier playback was tested.",
+    "Retained synthetic WAVs are 8kHz decoded mu-law; compare their hashes when replaying."
+  ]
+}

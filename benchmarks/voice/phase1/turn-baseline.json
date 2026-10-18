@@ -1,0 +1,253 @@
+{
+  "schema_version": 1,
+  "mode": "offline_rms_replay",
+  "revision": "4245ffe91647897636b0971e9aadd5d7551942e3",
+  "source_sha256": "e1fd20bb87ccd8cc983e8aaf32a2db4a877b7e27ec88f262a45d2b520bf16005",
+  "scenarios_sha256": "81e3db8b650f178a681cad98563c1378c5c221db3b7ad7c122acdcc98f14d830",
+  "generated_at": "2026-10-18T08:44:00.875Z",
+  "configuration": {
+    "frame_ms": 20,
+    "end_pause_ms": 800
+  },
+  "scenario_count": 11,
+  "matching_segmentation_count": 8,
+  "limitations": [
+    "Virtual frame time; not measured wall-clock or network latency.",
+    "RMS envelopes do not test ASR accuracy, echo cancellation, real noise, or clinical answer correctness.",
+    "Only the browser detector is executed; Twilio segmentation requires separate transport verification."
+  ],
+  "provider_metrics": {
+    "stt_ms": null,
+    "first_response_text_ms": null,
+    "first_playable_audio_ms": null,
+    "word_error_rate": null
+  },
+  "scenarios": [
+    {
+      "id": "complete_thought",
+      "detected_turns": 1,
+      "expected_turns": 1,
+      "segmentation_matches_target": true,
+      "premature_commit_during_incomplete_pause": null,
+      "final_end_wait_ms": 800,
+      "target_max_end_wait_ms": 400,
+      "end_wait_meets_target": false,
+      "events": [
+        {
+          "event": "start",
+          "at_ms": 720
+        },
+        {
+          "event": "end",
+          "at_ms": 2800
+        }
+      ]
+    },
+    {
+      "id": "medication_names",
+      "detected_turns": 1,
+      "expected_turns": 1,
+      "segmentation_matches_target": true,
+      "premature_commit_during_incomplete_pause": null,
+      "final_end_wait_ms": 800,
+      "target_max_end_wait_ms": null,
+      "end_wait_meets_target": null,
+      "events": [
+        {
+          "event": "start",
+          "at_ms": 720
+        },
+        {
+          "event": "end",
+          "at_ms": 4000
+        }
+      ]
+    },
+    {
+      "id": "numbers_and_units",
+      "detected_turns": 1,
+      "expected_turns": 1,
+      "segmentation_matches_target": true,
+      "premature_commit_during_incomplete_pause": null,
+      "final_end_wait_ms": 800,
+      "target_max_end_wait_ms": null,
+      "end_wait_meets_target": null,
+      "events": [
+        {
+          "event": "start",
+          "at_ms": 720
+        },
+        {
+          "event": "end",
+          "at_ms": 4600
+        }
+      ]
+    },
+    {
+      "id": "date_of_birth_pause",
+      "detected_turns": 2,
+      "expected_turns": 1,
+      "segmentation_matches_target": false,
+      "premature_commit_during_incomplete_pause": true,
+      "final_end_wait_ms": 800,
+      "target_max_end_wait_ms": null,
+      "end_wait_meets_target": null,
+      "events": [
+        {
+          "event": "start",
+          "at_ms": 720
+        },
+        {
+          "event": "end",
+          "at_ms": 2600
+        },
+        {
+          "event": "start",
+          "at_ms": 2920
+        },
+        {
+          "event": "end",
+          "at_ms": 5800
+        }
+      ]
+    },
+    {
+      "id": "unfinished_symptom_pause",
+      "detected_turns": 2,
+      "expected_turns": 1,
+      "segmentation_matches_target": false,
+      "premature_commit_during_incomplete_pause": true,
+      "final_end_wait_ms": 800,
+      "target_max_end_wait_ms": null,
+      "end_wait_meets_target": null,
+      "events": [
+        {
+          "event": "start",
+          "at_ms": 720
+        },
+        {
+          "event": "end",
+          "at_ms": 2400
+        },
+        {
+          "event": "start",
+          "at_ms": 2720
+        },
+        {
+          "event": "end",
+          "at_ms": 4800
+        }
+      ]
+    },
+    {
+      "id": "ordinary_mid_sentence_pause",
+      "detected_turns": 1,
+      "expected_turns": 1,
+      "segmentation_matches_target": true,
+      "premature_commit_during_incomplete_pause": null,
+      "final_end_wait_ms": 800,
+      "target_max_end_wait_ms": null,
+      "end_wait_meets_target": null,
+      "events": [
+        {
+          "event": "start",
+          "at_ms": 720
+        },
+        {
+          "event": "end",
+          "at_ms": 4800
+        }
+      ]
+    },
+    {
+      "id": "steady_room_noise",
+      "detected_turns": 0,
+      "expected_turns": 0,
+      "segmentation_matches_target": true,
+      "premature_commit_during_incomplete_pause": null,
+      "final_end_wait_ms": null,
+      "target_max_end_wait_ms": null,
+      "end_wait_meets_target": null,
+      "events": []
+    },
+    {
+      "id": "brief_click",
+      "detected_turns": 0,
+      "expected_turns": 0,
+      "segmentation_matches_target": true,
+      "premature_commit_during_incomplete_pause": null,
+      "final_end_wait_ms": null,
+      "target_max_end_wait_ms": null,
+      "end_wait_meets_target": null,
+      "events": []
+    },
+    {
+      "id": "non_speech_energy_burst",
+      "detected_turns": 1,
+      "expected_turns": 0,
+      "segmentation_matches_target": false,
+      "premature_commit_during_incomplete_pause": null,
+      "final_end_wait_ms": 800,
+      "target_max_end_wait_ms": null,
+      "end_wait_meets_target": null,
+      "events": [
+        {
+          "event": "start",
+          "at_ms": 720
+        },
+        {
+          "event": "end",
+          "at_ms": 1580
+        }
+      ]
+    },
+    {
+      "id": "speech_over_background_noise",
+      "detected_turns": 1,
+      "expected_turns": 1,
+      "segmentation_matches_target": true,
+      "premature_commit_during_incomplete_pause": null,
+      "final_end_wait_ms": 800,
+      "target_max_end_wait_ms": null,
+      "end_wait_meets_target": null,
+      "events": [
+        {
+          "event": "start",
+          "at_ms": 720
+        },
+        {
+          "event": "end",
+          "at_ms": 3200
+        }
+      ]
+    },
+    {
+      "id": "bounded_long_utterance",
+      "detected_turns": 2,
+      "expected_turns": 2,
+      "segmentation_matches_target": true,
+      "premature_commit_during_incomplete_pause": null,
+      "final_end_wait_ms": 800,
+      "target_max_end_wait_ms": null,
+      "end_wait_meets_target": null,
+      "events": [
+        {
+          "event": "start",
+          "at_ms": 720
+        },
+        {
+          "event": "end",
+          "at_ms": 20600
+        },
+        {
+          "event": "start",
+          "at_ms": 20720
+        },
+        {
+          "event": "end",
+          "at_ms": 22400
+        }
+      ]
+    }
+  ]
+}

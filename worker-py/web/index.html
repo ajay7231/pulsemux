@@ -565,6 +565,10 @@
     .noise-option {display:flex; align-items:center; gap:8px; margin-top:18px; font-size:12px; color:#a7b8c8;}
     .noise-option input {accent-color:var(--cyan);}
     #call-notice {font-size:12px; color:#fbbf24; line-height:1.5; margin-top:12px; min-height:18px;}
+    .recognition-preview {margin: 0 24px 16px; padding: 12px 16px; border: 1px dashed var(--text-muted); border-radius: 8px;}
+    .recognition-preview[hidden] {display:none;}
+    .recognition-preview-label {display:flex; justify-content:space-between; gap:12px; color:var(--text-muted); font-size:12px;}
+    #interim-text {margin:8px 0 0; max-height:120px; overflow-y:auto; overflow-wrap:anywhere; white-space:pre-wrap;}
     button:disabled, select:disabled {opacity:.45; cursor:default;}
     button:focus-visible, select:focus-visible, input:focus-visible {outline:2px solid var(--cyan); outline-offset:4px;}
     .empty-state {margin:auto; text-align:center; color:var(--text-muted); padding:40px 12px;}
@@ -730,6 +734,10 @@
       </div>
 
       <!-- Keyboard Fallback Input -->
+      <aside id="interim-container" class="recognition-preview" aria-label="Provisional speech recognition" hidden>
+        <div class="recognition-preview-label"><span>Hearing you</span><span>Not final</span></div>
+        <p id="interim-text"></p>
+      </aside>
       <div class="input-box">
         <input id="user-text-input" type="text" class="input-text" disabled placeholder="Optional: type during your call…" onkeydown="handleKey(event)">
         <button id="btn-send" disabled class="btn-send" onclick="sendTextMessage()">Send</button>

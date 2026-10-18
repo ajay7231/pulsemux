@@ -138,3 +138,64 @@ test('a failed farewell playback still hangs up', async () => {
   await tick();
   assert.equal(vm.runInContext('calling', f.scope), false);
 });
+
+test('playback measurements use one browser clock and export no speech content', async () => {
+  const f = callFixture();
+  f.scope.performance = {now: () => 1000};
+  vm.runInContext("measurement = {turn_id: 'timed', kind: 'speech', outcome: 'pending', speech_end_at: 100, commit_notice_at: 450}; measurements = [measurement]; queueAudio('AAAA');", f.scope);
+  await tick();
+  const report = JSON.parse(vm.runInContext('JSON.stringify(getMeasurements())', f.scope));
+  assert.equal(report.rows[0].speech_end_to_playback_ms, 900);
+  assert.equal(report.rows[0].commit_notice_to_playback_ms, 550);
+  assert.equal(report.rows[0].speech_end_to_first_text_ms, null);
+  assert.equal(report.rows[0].playback_provider, 'selected_tts');
+  assert.equal('transcript' in report.rows[0], false);
+  assert.equal('audio' in report.rows[0], false);
+});
+
+test('mute flushes the current utterance with zero trailing silence and blocks media', () => {
+  const f = callFixture();
+  const track = {enabled: true};
+  f.scope.micStream.getAudioTracks = () => [track];
+  f.scope.document.getElementById = id => {
+    if (!f.elements.has(id)) f.elements.set(id, {textContent: '', style: {}, setAttribute() {}});
+    const element = f.elements.get(id);
+    element.setAttribute = () => {};
+    return element;
+  };
+  vm.runInContext('detector.speaking = true; toggleMute(); processFrame(new Float32Array(160).fill(0.2));', f.scope);
+  assert.equal(track.enabled, false);
+  assert.equal(f.sent.length, 1);
+  assert.equal(f.sent[0].type, 'speech_end');
+  assert.equal(f.sent[0].pause_ms, 0);
+  assert.equal(f.sent[0].force, true);
+  vm.runInContext('toggleMute();', f.scope);
+  assert.equal(track.enabled, true);
+});
+
+test('semantic settings use a short pause candidate and wait for server commitment', () => {
+  const f = callFixture();
+  vm.runInContext("handleMessage({type: 'call_started', settings: {end_pause_ms: 800}, turn_detection: {semantic: true, candidate_pause_ms: 350}});", f.scope);
+  assert.equal(vm.runInContext('detector.pauseFrames', f.scope), 18);
+  assert.equal(vm.runInContext('semanticTurns', f.scope), true);
+  vm.runInContext("handleMessage({type: 'turn_committed', turn_id: 'farewell', forced: false});", f.scope);
+  assert.equal(vm.runInContext('recognizing', f.scope), true);
+  assert.equal(vm.runInContext('generating', f.scope), false);
+  vm.runInContext("handleMessage({type: 'call_started', settings: {end_pause_ms: 1000}, turn_detection: {semantic: false, candidate_pause_ms: 1000}});", f.scope);
+  assert.equal(vm.runInContext('detector.pauseFrames', f.scope), 50);
+});
+
+test('mute also flushes a paused semantic turn without sending microphone media', () => {
+  const f = callFixture();
+  f.scope.micStream.getAudioTracks = () => [{enabled: true}];
+  f.scope.document.getElementById = id => {
+    if (!f.elements.has(id)) f.elements.set(id, {textContent: '', style: {}});
+    const element = f.elements.get(id);
+    element.setAttribute = () => {};
+    return element;
+  };
+  vm.runInContext('semanticTurns = true; pendingSpeech = true; detector.speaking = false; toggleMute();', f.scope);
+  assert.equal(f.sent.length, 1);
+  assert.equal(f.sent[0].force, true);
+  assert.equal(f.sent[0].pause_ms, 0);
+});

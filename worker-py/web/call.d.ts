@@ -4,6 +4,8 @@ export interface CallController {
   sendTextMessage(): void;
   handleKey(event: { key: string }): void;
   destroy(): void;
+  getMeasurements(): Record<string, unknown>;
+  downloadMeasurements(): void;
 }
 export function createCallSimulator(
   root: HTMLElement | Document,

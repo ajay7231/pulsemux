@@ -1,5 +1,4 @@
-import { Plus } from "lucide-react";
-import { Badge, Button, Empty } from "../../components/ui";
+import { Badge, Empty } from "../../components/ui";
 import { api } from "../../lib/api";
 import { date } from "../../lib/format";
 import { operationService } from "../../services/platform";
@@ -103,23 +102,7 @@ export function ConnectionsPage({
           </table>
         </div>
       ) : (
-        <Empty
-          title="Your providers, connected"
-          action={
-            isAdmin ? (
-              <Button
-                onClick={() =>
-                  startModal("connection", {
-                    provider: "deepgram",
-                  })
-                }
-              >
-                <Plus size={16} />
-                Add a connection
-              </Button>
-            ) : undefined
-          }
-        >
+        <Empty title="No connections to display">
           Save Twilio, Deepgram, Groq, or OpenAI credentials. Keys are encrypted
           and never returned to the browser.
         </Empty>

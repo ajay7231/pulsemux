@@ -1,0 +1,440 @@
+{
+  "normalization_version": "synthetic-en-v1",
+  "trials": 32,
+  "reference_words": 280,
+  "word_edits": 24,
+  "corpus_wer": 0.0857,
+  "critical_terms_present": 56,
+  "critical_terms_total": 72,
+  "critical_term_presence_rate": 0.7778,
+  "trials_with_missing_critical_terms": 8,
+  "trials_requiring_format_review": 4,
+  "response_completed_trials": 32,
+  "error_events": {},
+  "rows": [
+    {
+      "scenario": "complete_thought",
+      "repetition": 0,
+      "reference_words": 7,
+      "word_edits": 0,
+      "wer": 0.0,
+      "missing_critical_terms": [],
+      "all_critical_terms_present": true,
+      "manual_review": [],
+      "response_completed": true,
+      "errors": []
+    },
+    {
+      "scenario": "complete_thought",
+      "repetition": 1,
+      "reference_words": 7,
+      "word_edits": 0,
+      "wer": 0.0,
+      "missing_critical_terms": [],
+      "all_critical_terms_present": true,
+      "manual_review": [],
+      "response_completed": true,
+      "errors": []
+    },
+    {
+      "scenario": "complete_thought",
+      "repetition": 2,
+      "reference_words": 7,
+      "word_edits": 0,
+      "wer": 0.0,
+      "missing_critical_terms": [],
+      "all_critical_terms_present": true,
+      "manual_review": [],
+      "response_completed": true,
+      "errors": []
+    },
+    {
+      "scenario": "complete_thought",
+      "repetition": 3,
+      "reference_words": 7,
+      "word_edits": 0,
+      "wer": 0.0,
+      "missing_critical_terms": [],
+      "all_critical_terms_present": true,
+      "manual_review": [],
+      "response_completed": true,
+      "errors": []
+    },
+    {
+      "scenario": "medication_names",
+      "repetition": 0,
+      "reference_words": 7,
+      "word_edits": 0,
+      "wer": 0.0,
+      "missing_critical_terms": [],
+      "all_critical_terms_present": true,
+      "manual_review": [],
+      "response_completed": true,
+      "errors": []
+    },
+    {
+      "scenario": "medication_names",
+      "repetition": 1,
+      "reference_words": 7,
+      "word_edits": 0,
+      "wer": 0.0,
+      "missing_critical_terms": [],
+      "all_critical_terms_present": true,
+      "manual_review": [],
+      "response_completed": true,
+      "errors": []
+    },
+    {
+      "scenario": "medication_names",
+      "repetition": 2,
+      "reference_words": 7,
+      "word_edits": 0,
+      "wer": 0.0,
+      "missing_critical_terms": [],
+      "all_critical_terms_present": true,
+      "manual_review": [],
+      "response_completed": true,
+      "errors": []
+    },
+    {
+      "scenario": "medication_names",
+      "repetition": 3,
+      "reference_words": 7,
+      "word_edits": 0,
+      "wer": 0.0,
+      "missing_critical_terms": [],
+      "all_critical_terms_present": true,
+      "manual_review": [],
+      "response_completed": true,
+      "errors": []
+    },
+    {
+      "scenario": "numbers_and_units",
+      "repetition": 0,
+      "reference_words": 16,
+      "word_edits": 3,
+      "wer": 0.1875,
+      "missing_critical_terms": [
+        "155",
+        "95"
+      ],
+      "all_critical_terms_present": false,
+      "manual_review": [],
+      "response_completed": true,
+      "errors": []
+    },
+    {
+      "scenario": "numbers_and_units",
+      "repetition": 1,
+      "reference_words": 16,
+      "word_edits": 3,
+      "wer": 0.1875,
+      "missing_critical_terms": [
+        "155",
+        "95"
+      ],
+      "all_critical_terms_present": false,
+      "manual_review": [],
+      "response_completed": true,
+      "errors": []
+    },
+    {
+      "scenario": "numbers_and_units",
+      "repetition": 2,
+      "reference_words": 16,
+      "word_edits": 3,
+      "wer": 0.1875,
+      "missing_critical_terms": [
+        "155",
+        "95"
+      ],
+      "all_critical_terms_present": false,
+      "manual_review": [],
+      "response_completed": true,
+      "errors": []
+    },
+    {
+      "scenario": "numbers_and_units",
+      "repetition": 3,
+      "reference_words": 16,
+      "word_edits": 3,
+      "wer": 0.1875,
+      "missing_critical_terms": [
+        "155",
+        "95"
+      ],
+      "all_critical_terms_present": false,
+      "manual_review": [],
+      "response_completed": true,
+      "errors": []
+    },
+    {
+      "scenario": "date_of_birth_pause",
+      "repetition": 0,
+      "reference_words": 8,
+      "word_edits": 3,
+      "wer": 0.375,
+      "missing_critical_terms": [
+        "fifth",
+        "March"
+      ],
+      "all_critical_terms_present": false,
+      "manual_review": [
+        "numeric_date_requires_locale_review"
+      ],
+      "response_completed": true,
+      "errors": []
+    },
+    {
+      "scenario": "date_of_birth_pause",
+      "repetition": 1,
+      "reference_words": 8,
+      "word_edits": 3,
+      "wer": 0.375,
+      "missing_critical_terms": [
+        "fifth",
+        "March"
+      ],
+      "all_critical_terms_present": false,
+      "manual_review": [
+        "numeric_date_requires_locale_review"
+      ],
+      "response_completed": true,
+      "errors": []
+    },
+    {
+      "scenario": "date_of_birth_pause",
+      "repetition": 2,
+      "reference_words": 8,
+      "word_edits": 3,
+      "wer": 0.375,
+      "missing_critical_terms": [
+        "fifth",
+        "March"
+      ],
+      "all_critical_terms_present": false,
+      "manual_review": [
+        "numeric_date_requires_locale_review"
+      ],
+      "response_completed": true,
+      "errors": []
+    },
+    {
+      "scenario": "date_of_birth_pause",
+      "repetition": 3,
+      "reference_words": 8,
+      "word_edits": 3,
+      "wer": 0.375,
+      "missing_critical_terms": [
+        "fifth",
+        "March"
+      ],
+      "all_critical_terms_present": false,
+      "manual_review": [
+        "numeric_date_requires_locale_review"
+      ],
+      "response_completed": true,
+      "errors": []
+    },
+    {
+      "scenario": "unfinished_symptom_pause",
+      "repetition": 0,
+      "reference_words": 7,
+      "word_edits": 0,
+      "wer": 0.0,
+      "missing_critical_terms": [],
+      "all_critical_terms_present": true,
+      "manual_review": [],
+      "response_completed": true,
+      "errors": []
+    },
+    {
+      "scenario": "unfinished_symptom_pause",
+      "repetition": 1,
+      "reference_words": 7,
+      "word_edits": 0,
+      "wer": 0.0,
+      "missing_critical_terms": [],
+      "all_critical_terms_present": true,
+      "manual_review": [],
+      "response_completed": true,
+      "errors": []
+    },
+    {
+      "scenario": "unfinished_symptom_pause",
+      "repetition": 2,
+      "reference_words": 7,
+      "word_edits": 0,
+      "wer": 0.0,
+      "missing_critical_terms": [],
+      "all_critical_terms_present": true,
+      "manual_review": [],
+      "response_completed": true,
+      "errors": []
+    },
+    {
+      "scenario": "unfinished_symptom_pause",
+      "repetition": 3,
+      "reference_words": 7,
+      "word_edits": 0,
+      "wer": 0.0,
+      "missing_critical_terms": [],
+      "all_critical_terms_present": true,
+      "manual_review": [],
+      "response_completed": true,
+      "errors": []
+    },
+    {
+      "scenario": "ordinary_mid_sentence_pause",
+      "repetition": 0,
+      "reference_words": 11,
+      "word_edits": 0,
+      "wer": 0.0,
+      "missing_critical_terms": [],
+      "all_critical_terms_present": true,
+      "manual_review": [],
+      "response_completed": true,
+      "errors": []
+    },
+    {
+      "scenario": "ordinary_mid_sentence_pause",
+      "repetition": 1,
+      "reference_words": 11,
+      "word_edits": 0,
+      "wer": 0.0,
+      "missing_critical_terms": [],
+      "all_critical_terms_present": true,
+      "manual_review": [],
+      "response_completed": true,
+      "errors": []
+    },
+    {
+      "scenario": "ordinary_mid_sentence_pause",
+      "repetition": 2,
+      "reference_words": 11,
+      "word_edits": 0,
+      "wer": 0.0,
+      "missing_critical_terms": [],
+      "all_critical_terms_present": true,
+      "manual_review": [],
+      "response_completed": true,
+      "errors": []
+    },
+    {
+      "scenario": "ordinary_mid_sentence_pause",
+      "repetition": 3,
+      "reference_words": 11,
+      "word_edits": 0,
+      "wer": 0.0,
+      "missing_critical_terms": [],
+      "all_critical_terms_present": true,
+      "manual_review": [],
+      "response_completed": true,
+      "errors": []
+    },
+    {
+      "scenario": "speech_over_background_noise",
+      "repetition": 0,
+      "reference_words": 6,
+      "word_edits": 0,
+      "wer": 0.0,
+      "missing_critical_terms": [],
+      "all_critical_terms_present": true,
+      "manual_review": [],
+      "response_completed": true,
+      "errors": []
+    },
+    {
+      "scenario": "speech_over_background_noise",
+      "repetition": 1,
+      "reference_words": 6,
+      "word_edits": 0,
+      "wer": 0.0,
+      "missing_critical_terms": [],
+      "all_critical_terms_present": true,
+      "manual_review": [],
+      "response_completed": true,
+      "errors": []
+    },
+    {
+      "scenario": "speech_over_background_noise",
+      "repetition": 2,
+      "reference_words": 6,
+      "word_edits": 0,
+      "wer": 0.0,
+      "missing_critical_terms": [],
+      "all_critical_terms_present": true,
+      "manual_review": [],
+      "response_completed": true,
+      "errors": []
+    },
+    {
+      "scenario": "speech_over_background_noise",
+      "repetition": 3,
+      "reference_words": 6,
+      "word_edits": 0,
+      "wer": 0.0,
+      "missing_critical_terms": [],
+      "all_critical_terms_present": true,
+      "manual_review": [],
+      "response_completed": true,
+      "errors": []
+    },
+    {
+      "scenario": "bounded_long_utterance",
+      "repetition": 0,
+      "reference_words": 8,
+      "word_edits": 0,
+      "wer": 0.0,
+      "missing_critical_terms": [],
+      "all_critical_terms_present": true,
+      "manual_review": [],
+      "response_completed": true,
+      "errors": []
+    },
+    {
+      "scenario": "bounded_long_utterance",
+      "repetition": 1,
+      "reference_words": 8,
+      "word_edits": 0,
+      "wer": 0.0,
+      "missing_critical_terms": [],
+      "all_critical_terms_present": true,
+      "manual_review": [],
+      "response_completed": true,
+      "errors": []
+    },
+    {
+      "scenario": "bounded_long_utterance",
+      "repetition": 2,
+      "reference_words": 8,
+      "word_edits": 0,
+      "wer": 0.0,
+      "missing_critical_terms": [],
+      "all_critical_terms_present": true,
+      "manual_review": [],
+      "response_completed": true,
+      "errors": []
+    },
+    {
+      "scenario": "bounded_long_utterance",
+      "repetition": 3,
+      "reference_words": 8,
+      "word_edits": 0,
+      "wer": 0.0,
+      "missing_critical_terms": [],
+      "all_critical_terms_present": true,
+      "manual_review": [],
+      "response_completed": true,
+      "errors": []
+    }
+  ],
+  "limitations": [
+    "Checks expected term presence, not clinical correctness or absence of conflicting extra facts.",
+    "Locale-ambiguous numeric dates are flagged for review and are not silently treated as equivalent.",
+    "Repeated synthetic voice samples do not establish generalization to patients, microphones or accents.",
+    "WER denominator includes failed/empty transcription trials; empty transcripts are not dropped."
+  ],
+  "report_sha256": "abbeea9a50c923d4976c679da701dc31e11c50e6632dc7e1d2dca3f70db92ad9",
+  "normalization_sha256": "f136a077e3c941f0cc192028da81bb2cac5b456680b9028ef1eaab6083d8a5cf"
+}

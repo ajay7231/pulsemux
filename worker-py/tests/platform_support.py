@@ -18,6 +18,10 @@ def platform_client():
             "PLATFORM_ENCRYPTION_KEYS": Fernet.generate_key().decode(),
             "PLATFORM_ENV": "development",
             "PUBLIC_BASE_URL": "",
+            # Unrelated tests use fake keys and exercise utterance fallback.
+            # Streaming transport tests explicitly enable and stub the socket.
+            "DEEPGRAM_STREAMING_ENABLED": "0",
+            "SEMANTIC_TURN_ENABLED": "0",
         },
     ):
         database.cache_clear()

@@ -1,0 +1,882 @@
+{
+  "scores": {
+    "http_fixed": {
+      "normalization_version": "synthetic-en-v1",
+      "trials": 32,
+      "reference_words": 280,
+      "word_edits": 18,
+      "corpus_wer": 0.0643,
+      "critical_terms_present": 62,
+      "critical_terms_total": 72,
+      "critical_term_presence_rate": 0.8611,
+      "trials_with_missing_critical_terms": 6,
+      "trials_requiring_format_review": 4,
+      "response_completed_trials": 32,
+      "error_events": {},
+      "rows": [
+        {
+          "scenario": "complete_thought",
+          "repetition": 0,
+          "reference_words": 7,
+          "word_edits": 0,
+          "wer": 0.0,
+          "missing_critical_terms": [],
+          "all_critical_terms_present": true,
+          "manual_review": [],
+          "response_completed": true,
+          "errors": []
+        },
+        {
+          "scenario": "medication_names",
+          "repetition": 0,
+          "reference_words": 7,
+          "word_edits": 0,
+          "wer": 0.0,
+          "missing_critical_terms": [],
+          "all_critical_terms_present": true,
+          "manual_review": [],
+          "response_completed": true,
+          "errors": []
+        },
+        {
+          "scenario": "numbers_and_units",
+          "repetition": 0,
+          "reference_words": 16,
+          "word_edits": 0,
+          "wer": 0.0,
+          "missing_critical_terms": [],
+          "all_critical_terms_present": true,
+          "manual_review": [],
+          "response_completed": true,
+          "errors": []
+        },
+        {
+          "scenario": "date_of_birth_pause",
+          "repetition": 0,
+          "reference_words": 8,
+          "word_edits": 3,
+          "wer": 0.375,
+          "missing_critical_terms": [
+            "fifth",
+            "March"
+          ],
+          "all_critical_terms_present": false,
+          "manual_review": [
+            "numeric_date_requires_locale_review"
+          ],
+          "response_completed": true,
+          "errors": []
+        },
+        {
+          "scenario": "unfinished_symptom_pause",
+          "repetition": 0,
+          "reference_words": 7,
+          "word_edits": 0,
+          "wer": 0.0,
+          "missing_critical_terms": [],
+          "all_critical_terms_present": true,
+          "manual_review": [],
+          "response_completed": true,
+          "errors": []
+        },
+        {
+          "scenario": "ordinary_mid_sentence_pause",
+          "repetition": 0,
+          "reference_words": 11,
+          "word_edits": 0,
+          "wer": 0.0,
+          "missing_critical_terms": [],
+          "all_critical_terms_present": true,
+          "manual_review": [],
+          "response_completed": true,
+          "errors": []
+        },
+        {
+          "scenario": "speech_over_background_noise",
+          "repetition": 0,
+          "reference_words": 6,
+          "word_edits": 0,
+          "wer": 0.0,
+          "missing_critical_terms": [],
+          "all_critical_terms_present": true,
+          "manual_review": [],
+          "response_completed": true,
+          "errors": []
+        },
+        {
+          "scenario": "bounded_long_utterance",
+          "repetition": 0,
+          "reference_words": 8,
+          "word_edits": 0,
+          "wer": 0.0,
+          "missing_critical_terms": [],
+          "all_critical_terms_present": true,
+          "manual_review": [],
+          "response_completed": true,
+          "errors": []
+        },
+        {
+          "scenario": "complete_thought",
+          "repetition": 1,
+          "reference_words": 7,
+          "word_edits": 1,
+          "wer": 0.1429,
+          "missing_critical_terms": [],
+          "all_critical_terms_present": true,
+          "manual_review": [],
+          "response_completed": true,
+          "errors": []
+        },
+        {
+          "scenario": "medication_names",
+          "repetition": 1,
+          "reference_words": 7,
+          "word_edits": 1,
+          "wer": 0.1429,
+          "missing_critical_terms": [
+            "Brilinta"
+          ],
+          "all_critical_terms_present": false,
+          "manual_review": [],
+          "response_completed": true,
+          "errors": []
+        },
+        {
+          "scenario": "numbers_and_units",
+          "repetition": 1,
+          "reference_words": 16,
+          "word_edits": 0,
+          "wer": 0.0,
+          "missing_critical_terms": [],
+          "all_critical_terms_present": true,
+          "manual_review": [],
+          "response_completed": true,
+          "errors": []
+        },
+        {
+          "scenario": "date_of_birth_pause",
+          "repetition": 1,
+          "reference_words": 8,
+          "word_edits": 3,
+          "wer": 0.375,
+          "missing_critical_terms": [
+            "fifth",
+            "March"
+          ],
+          "all_critical_terms_present": false,
+          "manual_review": [
+            "numeric_date_requires_locale_review"
+          ],
+          "response_completed": true,
+          "errors": []
+        },
+        {
+          "scenario": "unfinished_symptom_pause",
+          "repetition": 1,
+          "reference_words": 7,
+          "word_edits": 1,
+          "wer": 0.1429,
+          "missing_critical_terms": [],
+          "all_critical_terms_present": true,
+          "manual_review": [],
+          "response_completed": true,
+          "errors": []
+        },
+        {
+          "scenario": "ordinary_mid_sentence_pause",
+          "repetition": 1,
+          "reference_words": 11,
+          "word_edits": 0,
+          "wer": 0.0,
+          "missing_critical_terms": [],
+          "all_critical_terms_present": true,
+          "manual_review": [],
+          "response_completed": true,
+          "errors": []
+        },
+        {
+          "scenario": "speech_over_background_noise",
+          "repetition": 1,
+          "reference_words": 6,
+          "word_edits": 0,
+          "wer": 0.0,
+          "missing_critical_terms": [],
+          "all_critical_terms_present": true,
+          "manual_review": [],
+          "response_completed": true,
+          "errors": []
+        },
+        {
+          "scenario": "bounded_long_utterance",
+          "repetition": 1,
+          "reference_words": 8,
+          "word_edits": 0,
+          "wer": 0.0,
+          "missing_critical_terms": [],
+          "all_critical_terms_present": true,
+          "manual_review": [],
+          "response_completed": true,
+          "errors": []
+        },
+        {
+          "scenario": "complete_thought",
+          "repetition": 2,
+          "reference_words": 7,
+          "word_edits": 0,
+          "wer": 0.0,
+          "missing_critical_terms": [],
+          "all_critical_terms_present": true,
+          "manual_review": [],
+          "response_completed": true,
+          "errors": []
+        },
+        {
+          "scenario": "medication_names",
+          "repetition": 2,
+          "reference_words": 7,
+          "word_edits": 0,
+          "wer": 0.0,
+          "missing_critical_terms": [],
+          "all_critical_terms_present": true,
+          "manual_review": [],
+          "response_completed": true,
+          "errors": []
+        },
+        {
+          "scenario": "numbers_and_units",
+          "repetition": 2,
+          "reference_words": 16,
+          "word_edits": 0,
+          "wer": 0.0,
+          "missing_critical_terms": [],
+          "all_critical_terms_present": true,
+          "manual_review": [],
+          "response_completed": true,
+          "errors": []
+        },
+        {
+          "scenario": "date_of_birth_pause",
+          "repetition": 2,
+          "reference_words": 8,
+          "word_edits": 3,
+          "wer": 0.375,
+          "missing_critical_terms": [
+            "fifth",
+            "March"
+          ],
+          "all_critical_terms_present": false,
+          "manual_review": [
+            "numeric_date_requires_locale_review"
+          ],
+          "response_completed": true,
+          "errors": []
+        },
+        {
+          "scenario": "unfinished_symptom_pause",
+          "repetition": 2,
+          "reference_words": 7,
+          "word_edits": 0,
+          "wer": 0.0,
+          "missing_critical_terms": [],
+          "all_critical_terms_present": true,
+          "manual_review": [],
+          "response_completed": true,
+          "errors": []
+        },
+        {
+          "scenario": "ordinary_mid_sentence_pause",
+          "repetition": 2,
+          "reference_words": 11,
+          "word_edits": 0,
+          "wer": 0.0,
+          "missing_critical_terms": [],
+          "all_critical_terms_present": true,
+          "manual_review": [],
+          "response_completed": true,
+          "errors": []
+        },
+        {
+          "scenario": "speech_over_background_noise",
+          "repetition": 2,
+          "reference_words": 6,
+          "word_edits": 0,
+          "wer": 0.0,
+          "missing_critical_terms": [],
+          "all_critical_terms_present": true,
+          "manual_review": [],
+          "response_completed": true,
+          "errors": []
+        },
+        {
+          "scenario": "bounded_long_utterance",
+          "repetition": 2,
+          "reference_words": 8,
+          "word_edits": 0,
+          "wer": 0.0,
+          "missing_critical_terms": [],
+          "all_critical_terms_present": true,
+          "manual_review": [],
+          "response_completed": true,
+          "errors": []
+        },
+        {
+          "scenario": "complete_thought",
+          "repetition": 3,
+          "reference_words": 7,
+          "word_edits": 1,
+          "wer": 0.1429,
+          "missing_critical_terms": [],
+          "all_critical_terms_present": true,
+          "manual_review": [],
+          "response_completed": true,
+          "errors": []
+        },
+        {
+          "scenario": "medication_names",
+          "repetition": 3,
+          "reference_words": 7,
+          "word_edits": 1,
+          "wer": 0.1429,
+          "missing_critical_terms": [
+            "Brilinta"
+          ],
+          "all_critical_terms_present": false,
+          "manual_review": [],
+          "response_completed": true,
+          "errors": []
+        },
+        {
+          "scenario": "numbers_and_units",
+          "repetition": 3,
+          "reference_words": 16,
+          "word_edits": 0,
+          "wer": 0.0,
+          "missing_critical_terms": [],
+          "all_critical_terms_present": true,
+          "manual_review": [],
+          "response_completed": true,
+          "errors": []
+        },
+        {
+          "scenario": "date_of_birth_pause",
+          "repetition": 3,
+          "reference_words": 8,
+          "word_edits": 3,
+          "wer": 0.375,
+          "missing_critical_terms": [
+            "fifth",
+            "March"
+          ],
+          "all_critical_terms_present": false,
+          "manual_review": [
+            "numeric_date_requires_locale_review"
+          ],
+          "response_completed": true,
+          "errors": []
+        },
+        {
+          "scenario": "unfinished_symptom_pause",
+          "repetition": 3,
+          "reference_words": 7,
+          "word_edits": 1,
+          "wer": 0.1429,
+          "missing_critical_terms": [],
+          "all_critical_terms_present": true,
+          "manual_review": [],
+          "response_completed": true,
+          "errors": []
+        },
+        {
+          "scenario": "ordinary_mid_sentence_pause",
+          "repetition": 3,
+          "reference_words": 11,
+          "word_edits": 0,
+          "wer": 0.0,
+          "missing_critical_terms": [],
+          "all_critical_terms_present": true,
+          "manual_review": [],
+          "response_completed": true,
+          "errors": []
+        },
+        {
+          "scenario": "speech_over_background_noise",
+          "repetition": 3,
+          "reference_words": 6,
+          "word_edits": 0,
+          "wer": 0.0,
+          "missing_critical_terms": [],
+          "all_critical_terms_present": true,
+          "manual_review": [],
+          "response_completed": true,
+          "errors": []
+        },
+        {
+          "scenario": "bounded_long_utterance",
+          "repetition": 3,
+          "reference_words": 8,
+          "word_edits": 0,
+          "wer": 0.0,
+          "missing_critical_terms": [],
+          "all_critical_terms_present": true,
+          "manual_review": [],
+          "response_completed": true,
+          "errors": []
+        }
+      ],
+      "limitations": [
+        "Checks expected term presence, not clinical correctness or absence of conflicting extra facts.",
+        "Locale-ambiguous numeric dates are flagged for review and are not silently treated as equivalent.",
+        "Repeated synthetic voice samples do not establish generalization to patients, microphones or accents.",
+        "WER denominator includes failed/empty transcription trials; empty transcripts are not dropped."
+      ]
+    },
+    "streaming_semantic": {
+      "normalization_version": "synthetic-en-v1",
+      "trials": 32,
+      "reference_words": 280,
+      "word_edits": 24,
+      "corpus_wer": 0.0857,
+      "critical_terms_present": 62,
+      "critical_terms_total": 72,
+      "critical_term_presence_rate": 0.8611,
+      "trials_with_missing_critical_terms": 6,
+      "trials_requiring_format_review": 4,
+      "response_completed_trials": 32,
+      "error_events": {},
+      "rows": [
+        {
+          "scenario": "complete_thought",
+          "repetition": 0,
+          "reference_words": 7,
+          "word_edits": 0,
+          "wer": 0.0,
+          "missing_critical_terms": [],
+          "all_critical_terms_present": true,
+          "manual_review": [],
+          "response_completed": true,
+          "errors": []
+        },
+        {
+          "scenario": "medication_names",
+          "repetition": 0,
+          "reference_words": 7,
+          "word_edits": 0,
+          "wer": 0.0,
+          "missing_critical_terms": [],
+          "all_critical_terms_present": true,
+          "manual_review": [],
+          "response_completed": true,
+          "errors": []
+        },
+        {
+          "scenario": "numbers_and_units",
+          "repetition": 0,
+          "reference_words": 16,
+          "word_edits": 1,
+          "wer": 0.0625,
+          "missing_critical_terms": [],
+          "all_critical_terms_present": true,
+          "manual_review": [],
+          "response_completed": true,
+          "errors": []
+        },
+        {
+          "scenario": "date_of_birth_pause",
+          "repetition": 0,
+          "reference_words": 8,
+          "word_edits": 3,
+          "wer": 0.375,
+          "missing_critical_terms": [
+            "fifth",
+            "March"
+          ],
+          "all_critical_terms_present": false,
+          "manual_review": [
+            "numeric_date_requires_locale_review"
+          ],
+          "response_completed": true,
+          "errors": []
+        },
+        {
+          "scenario": "unfinished_symptom_pause",
+          "repetition": 0,
+          "reference_words": 7,
+          "word_edits": 0,
+          "wer": 0.0,
+          "missing_critical_terms": [],
+          "all_critical_terms_present": true,
+          "manual_review": [],
+          "response_completed": true,
+          "errors": []
+        },
+        {
+          "scenario": "ordinary_mid_sentence_pause",
+          "repetition": 0,
+          "reference_words": 11,
+          "word_edits": 0,
+          "wer": 0.0,
+          "missing_critical_terms": [],
+          "all_critical_terms_present": true,
+          "manual_review": [],
+          "response_completed": true,
+          "errors": []
+        },
+        {
+          "scenario": "speech_over_background_noise",
+          "repetition": 0,
+          "reference_words": 6,
+          "word_edits": 0,
+          "wer": 0.0,
+          "missing_critical_terms": [],
+          "all_critical_terms_present": true,
+          "manual_review": [],
+          "response_completed": true,
+          "errors": []
+        },
+        {
+          "scenario": "bounded_long_utterance",
+          "repetition": 0,
+          "reference_words": 8,
+          "word_edits": 0,
+          "wer": 0.0,
+          "missing_critical_terms": [],
+          "all_critical_terms_present": true,
+          "manual_review": [],
+          "response_completed": true,
+          "errors": []
+        },
+        {
+          "scenario": "complete_thought",
+          "repetition": 1,
+          "reference_words": 7,
+          "word_edits": 1,
+          "wer": 0.1429,
+          "missing_critical_terms": [],
+          "all_critical_terms_present": true,
+          "manual_review": [],
+          "response_completed": true,
+          "errors": []
+        },
+        {
+          "scenario": "medication_names",
+          "repetition": 1,
+          "reference_words": 7,
+          "word_edits": 1,
+          "wer": 0.1429,
+          "missing_critical_terms": [
+            "Brilinta"
+          ],
+          "all_critical_terms_present": false,
+          "manual_review": [],
+          "response_completed": true,
+          "errors": []
+        },
+        {
+          "scenario": "numbers_and_units",
+          "repetition": 1,
+          "reference_words": 16,
+          "word_edits": 1,
+          "wer": 0.0625,
+          "missing_critical_terms": [],
+          "all_critical_terms_present": true,
+          "manual_review": [],
+          "response_completed": true,
+          "errors": []
+        },
+        {
+          "scenario": "date_of_birth_pause",
+          "repetition": 1,
+          "reference_words": 8,
+          "word_edits": 3,
+          "wer": 0.375,
+          "missing_critical_terms": [
+            "fifth",
+            "March"
+          ],
+          "all_critical_terms_present": false,
+          "manual_review": [
+            "numeric_date_requires_locale_review"
+          ],
+          "response_completed": true,
+          "errors": []
+        },
+        {
+          "scenario": "unfinished_symptom_pause",
+          "repetition": 1,
+          "reference_words": 7,
+          "word_edits": 1,
+          "wer": 0.1429,
+          "missing_critical_terms": [],
+          "all_critical_terms_present": true,
+          "manual_review": [],
+          "response_completed": true,
+          "errors": []
+        },
+        {
+          "scenario": "ordinary_mid_sentence_pause",
+          "repetition": 1,
+          "reference_words": 11,
+          "word_edits": 0,
+          "wer": 0.0,
+          "missing_critical_terms": [],
+          "all_critical_terms_present": true,
+          "manual_review": [],
+          "response_completed": true,
+          "errors": []
+        },
+        {
+          "scenario": "speech_over_background_noise",
+          "repetition": 1,
+          "reference_words": 6,
+          "word_edits": 0,
+          "wer": 0.0,
+          "missing_critical_terms": [],
+          "all_critical_terms_present": true,
+          "manual_review": [],
+          "response_completed": true,
+          "errors": []
+        },
+        {
+          "scenario": "bounded_long_utterance",
+          "repetition": 1,
+          "reference_words": 8,
+          "word_edits": 1,
+          "wer": 0.125,
+          "missing_critical_terms": [],
+          "all_critical_terms_present": true,
+          "manual_review": [],
+          "response_completed": true,
+          "errors": []
+        },
+        {
+          "scenario": "complete_thought",
+          "repetition": 2,
+          "reference_words": 7,
+          "word_edits": 0,
+          "wer": 0.0,
+          "missing_critical_terms": [],
+          "all_critical_terms_present": true,
+          "manual_review": [],
+          "response_completed": true,
+          "errors": []
+        },
+        {
+          "scenario": "medication_names",
+          "repetition": 2,
+          "reference_words": 7,
+          "word_edits": 0,
+          "wer": 0.0,
+          "missing_critical_terms": [],
+          "all_critical_terms_present": true,
+          "manual_review": [],
+          "response_completed": true,
+          "errors": []
+        },
+        {
+          "scenario": "numbers_and_units",
+          "repetition": 2,
+          "reference_words": 16,
+          "word_edits": 1,
+          "wer": 0.0625,
+          "missing_critical_terms": [],
+          "all_critical_terms_present": true,
+          "manual_review": [],
+          "response_completed": true,
+          "errors": []
+        },
+        {
+          "scenario": "date_of_birth_pause",
+          "repetition": 2,
+          "reference_words": 8,
+          "word_edits": 3,
+          "wer": 0.375,
+          "missing_critical_terms": [
+            "fifth",
+            "March"
+          ],
+          "all_critical_terms_present": false,
+          "manual_review": [
+            "numeric_date_requires_locale_review"
+          ],
+          "response_completed": true,
+          "errors": []
+        },
+        {
+          "scenario": "unfinished_symptom_pause",
+          "repetition": 2,
+          "reference_words": 7,
+          "word_edits": 0,
+          "wer": 0.0,
+          "missing_critical_terms": [],
+          "all_critical_terms_present": true,
+          "manual_review": [],
+          "response_completed": true,
+          "errors": []
+        },
+        {
+          "scenario": "ordinary_mid_sentence_pause",
+          "repetition": 2,
+          "reference_words": 11,
+          "word_edits": 0,
+          "wer": 0.0,
+          "missing_critical_terms": [],
+          "all_critical_terms_present": true,
+          "manual_review": [],
+          "response_completed": true,
+          "errors": []
+        },
+        {
+          "scenario": "speech_over_background_noise",
+          "repetition": 2,
+          "reference_words": 6,
+          "word_edits": 0,
+          "wer": 0.0,
+          "missing_critical_terms": [],
+          "all_critical_terms_present": true,
+          "manual_review": [],
+          "response_completed": true,
+          "errors": []
+        },
+        {
+          "scenario": "bounded_long_utterance",
+          "repetition": 2,
+          "reference_words": 8,
+          "word_edits": 0,
+          "wer": 0.0,
+          "missing_critical_terms": [],
+          "all_critical_terms_present": true,
+          "manual_review": [],
+          "response_completed": true,
+          "errors": []
+        },
+        {
+          "scenario": "complete_thought",
+          "repetition": 3,
+          "reference_words": 7,
+          "word_edits": 1,
+          "wer": 0.1429,
+          "missing_critical_terms": [],
+          "all_critical_terms_present": true,
+          "manual_review": [],
+          "response_completed": true,
+          "errors": []
+        },
+        {
+          "scenario": "medication_names",
+          "repetition": 3,
+          "reference_words": 7,
+          "word_edits": 1,
+          "wer": 0.1429,
+          "missing_critical_terms": [
+            "Brilinta"
+          ],
+          "all_critical_terms_present": false,
+          "manual_review": [],
+          "response_completed": true,
+          "errors": []
+        },
+        {
+          "scenario": "numbers_and_units",
+          "repetition": 3,
+          "reference_words": 16,
+          "word_edits": 1,
+          "wer": 0.0625,
+          "missing_critical_terms": [],
+          "all_critical_terms_present": true,
+          "manual_review": [],
+          "response_completed": true,
+          "errors": []
+        },
+        {
+          "scenario": "date_of_birth_pause",
+          "repetition": 3,
+          "reference_words": 8,
+          "word_edits": 3,
+          "wer": 0.375,
+          "missing_critical_terms": [
+            "fifth",
+            "March"
+          ],
+          "all_critical_terms_present": false,
+          "manual_review": [
+            "numeric_date_requires_locale_review"
+          ],
+          "response_completed": true,
+          "errors": []
+        },
+        {
+          "scenario": "unfinished_symptom_pause",
+          "repetition": 3,
+          "reference_words": 7,
+          "word_edits": 1,
+          "wer": 0.1429,
+          "missing_critical_terms": [],
+          "all_critical_terms_present": true,
+          "manual_review": [],
+          "response_completed": true,
+          "errors": []
+        },
+        {
+          "scenario": "ordinary_mid_sentence_pause",
+          "repetition": 3,
+          "reference_words": 11,
+          "word_edits": 0,
+          "wer": 0.0,
+          "missing_critical_terms": [],
+          "all_critical_terms_present": true,
+          "manual_review": [],
+          "response_completed": true,
+          "errors": []
+        },
+        {
+          "scenario": "speech_over_background_noise",
+          "repetition": 3,
+          "reference_words": 6,
+          "word_edits": 0,
+          "wer": 0.0,
+          "missing_critical_terms": [],
+          "all_critical_terms_present": true,
+          "manual_review": [],
+          "response_completed": true,
+          "errors": []
+        },
+        {
+          "scenario": "bounded_long_utterance",
+          "repetition": 3,
+          "reference_words": 8,
+          "word_edits": 1,
+          "wer": 0.125,
+          "missing_critical_terms": [],
+          "all_critical_terms_present": true,
+          "manual_review": [],
+          "response_completed": true,
+          "errors": []
+        }
+      ],
+      "limitations": [
+        "Checks expected term presence, not clinical correctness or absence of conflicting extra facts.",
+        "Locale-ambiguous numeric dates are flagged for review and are not silently treated as equivalent.",
+        "Repeated synthetic voice samples do not establish generalization to patients, microphones or accents.",
+        "WER denominator includes failed/empty transcription trials; empty transcripts are not dropped."
+      ]
+    }
+  },
+  "gates": {
+    "identical_audio_pairs": true,
+    "minimum_30_trials_per_configuration": true,
+    "all_turns_complete_without_errors": true,
+    "exactly_one_commit_per_trial": true,
+    "no_pending_tasks": true,
+    "no_normalized_wer_regression": false,
+    "all_expected_critical_terms_present": false,
+    "no_unresolved_date_format_review": false
+  },
+  "automated_gates_pass": false,
+  "limitations": [
+    "Critical-term presence does not prove absence of conflicting facts or clinical-answer correctness.",
+    "Do not mark release ready from this report alone: human/noise, microphone playback and transport review are separate.",
+    "Numeric dates remain unresolved; locale is not inferred or silently normalized."
+  ],
+  "report_sha256": "9baff44a100f759a8ef1aba4564a7820f4deba6cd0b6f77dc65a5ead3f9ed849",
+  "normalization_sha256": "f136a077e3c941f0cc192028da81bb2cac5b456680b9028ef1eaab6083d8a5cf"
+}

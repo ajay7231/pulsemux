@@ -167,9 +167,12 @@ trailing route. The same origin must reach HTTP and WebSocket endpoints.
 Inbound and outbound calls create `<Connect><Stream>` TwiML pointing to the shared
 runtime. Both HTTP callbacks and WebSocket handshakes are signature-validated.
 Each stream also needs a one-time token tied to the persisted call and Twilio SID.
-ASR is currently utterance-based with automatic VAD segmentation, as in the
-simulator; audio frames and agent responses stream continuously. This is not a
-sub-500ms latency guarantee.
+Deepgram recognition uses one persistent WebSocket per call in both the simulator
+and telephone runtime. Existing VAD boundaries commit finalized transcript words;
+interim results do not enter conversation history or trigger responses. Groq Whisper
+remains utterance-based. `DEEPGRAM_STREAMING_ENABLED=0` restores the prior Deepgram
+HTTP path. See [streaming recognition](STREAMING_RECOGNITION.md) for lifecycle,
+failure handling, and measurement boundaries. This is not a sub-500ms latency guarantee.
 
 Phone playback uses 20ms G.711 mu-law frames. Interruption clears queued media;
 a farewell waits for Twilio's playback `mark` before hanging up. A missing phone

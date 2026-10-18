@@ -39,7 +39,7 @@ export function TasksPage({ canEdit, busy, run, filtered, refresh }: Props) {
           </div>
         ))
       ) : (
-        <Empty title="Nothing waiting on your team">
+        <Empty title="No tasks to display">
           Callback requests, scheduling changes, and provider issues will appear
           here.
         </Empty>

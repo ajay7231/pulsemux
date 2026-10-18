@@ -1,0 +1,8 @@
+{
+  "schema_version": 1,
+  "notes": "Supplementary invented negation/dose inputs; no patient information. Review meaning as well as token presence.",
+  "scenarios": [
+    {"id":"negated_cancellation","reference":"I do not want to cancel my appointment.","critical_terms":["not","cancel","appointment"]},
+    {"id":"negated_dose","reference":"The test label says ninety milligrams, not ninety-five milligrams.","critical_terms":["90","not","95","milligrams"]}
+  ]
+}

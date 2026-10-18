@@ -1,5 +1,5 @@
-import { ArrowRight, AudioLines, Bot, Plus } from "lucide-react";
-import { Badge, Button, Empty } from "../../components/ui";
+import { ArrowRight, AudioLines, Bot } from "lucide-react";
+import { Badge, Empty } from "../../components/ui";
 import { editableAgent } from "../../lib/agents";
 import type { WorkspacePageProps } from "./types";
 type Props = Pick<
@@ -7,7 +7,6 @@ type Props = Pick<
   "startModal" | "filtered" | "templates" | "setEditor" | "setAgentTab"
 >;
 export function AgentsPage({
-  startModal,
   filtered,
   templates,
   setEditor,
@@ -55,17 +54,8 @@ export function AgentsPage({
     </div>
   ) : (
     <section className="card">
-      <Empty
-        title="Meet your next team member"
-        action={
-          <Button kind="primary" onClick={() => startModal("templates")}>
-            <Plus size={16} />
-            Create your first agent
-          </Button>
-        }
-      >
-        Start with a hospital workflow, then make its voice and behavior your
-        own.
+      <Empty title="No agents to display">
+        Create an agent from a hospital workflow to get started.
       </Empty>
     </section>
   );

@@ -1,6 +1,6 @@
-import { Activity, Phone, Plus, Search, Upload } from "lucide-react";
+import { RefreshCw, Phone, Plus, Search, Upload } from "lucide-react";
 import { lazy, Suspense } from "react";
-import { Button } from "../../components/ui";
+import { Button, Skeleton } from "../../components/ui";
 import { LABELS } from "../../lib/config";
 import { Page, Row } from "../../lib/types";
 import type { WorkspacePageProps } from "./types";
@@ -74,41 +74,11 @@ export function WorkspacePage({
     <>
       <div className="page-heading">
         <div>
-          <div className="eyebrow">
-            {page === "overview"
-              ? "YOUR OPERATIONS, CONNECTED"
-              : "WORKSPACE / " + LABELS[page].toUpperCase()}
-          </div>
           <h1>
             {page === "overview"
               ? `Welcome back, ${session.user.name.split(" ")[0]}.`
               : LABELS[page]}
           </h1>
-          <p>
-            {
-              {
-                overview:
-                  "A clear view of every conversation and the work that follows.",
-                agents:
-                  "Build thoughtful voice agents for the moments that matter.",
-                knowledge:
-                  "Give your agents reliable, approved hospital information.",
-                connections:
-                  "Bring your providers. Keep credentials secure and in your control.",
-                numbers:
-                  "Connect your phone numbers to the right hospital agent.",
-                contacts:
-                  "Manage the people you contact and their calling preferences.",
-                campaigns:
-                  "Reach patients at the right time, with the right conversation.",
-                calls:
-                  "Follow every conversation from the first hello to the next step.",
-                tasks:
-                  "A shared queue for the conversations that need a human.",
-                settings: "Manage your workspace, team, and access.",
-              }[page]
-            }
-          </p>
         </div>
         <div className="actions">
           {canEdit &&
@@ -180,25 +150,16 @@ export function WorkspacePage({
             </Button>
           )}
           {page === "calls" && canEdit && (
-            <Button onClick={() => startModal("outbound")}>
+            <Button kind="primary" onClick={() => startModal("outbound")}>
               <Phone size={16} />
               Place a call
             </Button>
           )}
         </div>
       </div>
-      <Suspense
-        fallback={
-          <div className="loading" role="status">
-            Loading page…
-          </div>
-        }
-      >
+      <Suspense fallback={<Skeleton label="Loading page" />}>
         {loading ? (
-          <div className="loading">
-            <span />
-            Loading your workspace…
-          </div>
+          <Skeleton label="Loading workspace" />
         ) : page === "overview" ? (
           <OverviewPage
             navigate={navigate}
@@ -242,7 +203,7 @@ export function WorkspacePage({
                   aria-label="Refresh records"
                   onClick={refresh}
                 >
-                  <Activity size={17} />
+                  <RefreshCw size={17} />
                 </button>
               </div>
             )}

@@ -14,40 +14,42 @@ export function NumbersPage({
   return (
     <section className="card">
       {filtered.length ? (
-        <table>
-          <thead>
-            <tr>
-              <th>Phone number</th>
-              <th>Inbound agent</th>
-              <th>Setup</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filtered.map((n) => (
-              <tr key={n.id}>
-                <td>
-                  <strong>{n.number}</strong>
-                  <small>{n.label}</small>
-                </td>
-                <td>{agents.find((a) => a.id === n.agent_id)?.name}</td>
-                <td>
-                  <button
-                    className="text-button"
-                    onClick={() => {
-                      setSelected(n);
-                      setModal("number-help");
-                    }}
-                  >
-                    Webhook instructions
-                    <ArrowRight size={15} />
-                  </button>
-                </td>
+        <div className="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>Phone number</th>
+                <th>Inbound agent</th>
+                <th>Setup</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {filtered.map((n) => (
+                <tr key={n.id}>
+                  <td>
+                    <strong>{n.number}</strong>
+                    <small>{n.label}</small>
+                  </td>
+                  <td>{agents.find((a) => a.id === n.agent_id)?.name}</td>
+                  <td>
+                    <button
+                      className="text-button"
+                      onClick={() => {
+                        setSelected(n);
+                        setModal("number-help");
+                      }}
+                    >
+                      Webhook instructions
+                      <ArrowRight size={15} />
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       ) : (
-        <Empty title="A familiar number. A helpful voice.">
+        <Empty title="No phone numbers to display">
           Assign a Twilio number you own, then route its incoming calls to a
           published agent.
         </Empty>

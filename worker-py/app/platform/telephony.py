@@ -521,6 +521,7 @@ async def phone_socket(ws: WebSocket, call_id: str):
         transport = PhoneTransport(ws, start["streamSid"], call_id)
         session = session_class()(transport, call_id)
         transport.session = session
+        await session.start_recognition()
         player = asyncio.create_task(transport.play())
         session.active_turn_task = asyncio.create_task(session.greet("greeting"))
         audio = CallAudio()
@@ -530,7 +531,11 @@ async def phone_socket(ws: WebSocket, call_id: str):
         duration = 0
         noise = 0.002
         began = time.monotonic()
+        recognition_turn = None
         while True:
+            if session.recognition_failed:
+                await update_twilio_call(call_id)
+                break
             if player.done():
                 await update_twilio_call(call_id)
                 break
@@ -564,6 +569,10 @@ async def phone_socket(ws: WebSocket, call_id: str):
                     np.sqrt(np.mean((magnitude.astype(np.float64) / 32768) ** 2))
                 )
                 threshold = max(0.009, noise * 2.8)
+                if speaking and session.turn_completion and session.turn_completion.turn_id is None:
+                    # The shared hard duration limit can commit during speech.
+                    # Start a new bounded window for subsequent telephone audio.
+                    speaking, attack, silence = False, 0, 0
                 if not speaking:
                     if rms < threshold:
                         noise = noise * 0.98 + rms * 0.02
@@ -574,16 +583,26 @@ async def phone_socket(ws: WebSocket, call_id: str):
                         duration = 6
                         await cancel_turn(session)
                         await transport.clear()
-                        audio.start_speech()
+                        recognition_turn = secrets.token_hex(8)
+                        if session.live_stt:
+                            session.begin_recognition(recognition_turn)
+                        else:
+                            audio.start_speech()
                 else:
                     duration += 1
                     silence = silence + 1 if rms < threshold * 0.65 else 0
-                audio.feed(chunk)
+                if session.live_stt:
+                    await session.feed_recognition(chunk)
+                else:
+                    audio.feed(chunk)
                 if speaking and (
-                    silence >= session.config["end_pause_ms"] // 20 or duration >= 1000
+                    silence * 20 >= (session.turn_completion.timing.complete_ms if session.turn_completion else session.config["end_pause_ms"]) or duration >= 1000
                 ):
                     speaking = False
                     attack = 0
+                    if session.live_stt:
+                        await session.pause_recognition(recognition_turn, silence * 20, force=duration >= 1000)
+                        continue
                     utterance = audio.end_speech()
                     if utterance:
                         session.active_turn_task = asyncio.create_task(
@@ -603,7 +622,8 @@ async def phone_socket(ws: WebSocket, call_id: str):
             from app.web_server import cancel_turn
 
             await cancel_turn(session)
-            await session.close_record()
+            await session.close_recognition()
+            await session.close_record("failed" if session.recognition_failed else "completed")
         if player:
             player.cancel()
             try:

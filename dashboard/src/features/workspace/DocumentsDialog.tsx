@@ -80,7 +80,7 @@ export function DocumentsDialog({
               <Plus size={16} />
               Add text
             </Button>
-            <label className="button">
+            <label className="button upload-button">
               <Upload size={16} />
               Upload documents
               <input
@@ -88,7 +88,7 @@ export function DocumentsDialog({
                 multiple
                 disabled={busy}
                 accept=".pdf,.txt,.md,.csv"
-                hidden
+                className="upload-input"
                 onChange={(e) => {
                   const files = Array.from(e.target.files || []);
                   e.target.value = "";

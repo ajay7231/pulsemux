@@ -124,16 +124,123 @@ class VoiceSession:
         self.ending_call = False
         self.keys_managed = False
         self.provider_keys = {}
+        self.live_stt = None
+        self.turn_completion = None
+        self.recognition_failed = False
+        self.send_lock = asyncio.Lock()
+
+    async def start_recognition(self):
+        if self.stt_engine != "deepgram" or os.getenv("DEEPGRAM_STREAMING_ENABLED", "1") == "0":
+            return
+        from app.pipeline.live_stt import DeepgramCallStream
+        self.live_stt = DeepgramCallStream(
+            self.provider_key("stt", "DEEPGRAM_API_KEY"),
+            self.recognition_interim, self.recognition_failure,
+        )
+        if os.getenv("SEMANTIC_TURN_ENABLED", "1") != "0":
+            from app.pipeline.turn_completion import SemanticTurnCompletion, TurnTiming
+            timing = TurnTiming(
+                complete_ms=int(os.getenv("SEMANTIC_TURN_COMPLETE_MS", "350")),
+                incomplete_ms=int(os.getenv("SEMANTIC_TURN_INCOMPLETE_MS", "1200")),
+            )
+            self.turn_completion = SemanticTurnCompletion(
+                self.commit_semantic_turn, self.recognition_failure, timing)
+            self.live_stt.on_result = self.turn_completion.observe
+            self.live_stt.endpointing_ms = timing.complete_ms
+        try:
+            await self.live_stt.start()
+        except Exception:
+            self.recognition_failed = True
+            raise
+
+    async def recognition_interim(self, turn_id, text):
+        # Provisional text is never sent to the LLM or persisted as patient history.
+        await self.send_json({"type": "transcript_interim", "turn_id": turn_id, "text": text})
+
+    async def recognition_failure(self):
+        if self.recognition_failed:
+            return
+        self.recognition_failed = True
+        await self.send_json({"type": "error", "message": "Speech recognition disconnected. Start a new call to reconnect."})
+        await self.send_json({"type": "call_ended", "reason": "recognition_failure", "message": "Speech recognition disconnected. Start a new call to reconnect."})
+
+    async def feed_recognition(self, frame):
+        from app.pipeline.live_stt import RecognitionUnavailable
+        try:
+            self.live_stt.feed(frame)
+        except RecognitionUnavailable:
+            await self.recognition_failure()
+
+    def commit_recognition(self, turn_id, pause_ms=800):
+        result = self.live_stt.end_turn(turn_id, pause_ms)
+        self.active_turn_task = asyncio.create_task(self.respond_to_recognition(result, turn_id))
+
+    def begin_recognition(self, turn_id):
+        if not isinstance(turn_id, str) or not turn_id or len(turn_id) > 128:
+            raise ValueError("Invalid recognition turn ID")
+        continuing = self.turn_completion.start(turn_id) if self.turn_completion else False
+        self.live_stt.begin_turn(turn_id, continue_turn=continuing)
+
+    async def pause_recognition(self, turn_id, pause_ms, *, force=False):
+        if self.turn_completion:
+            if self.turn_completion.turn_id != turn_id:
+                return
+            from app.pipeline.live_stt import RecognitionUnavailable
+            try:
+                self.live_stt.request_finalize()
+            except RecognitionUnavailable:
+                await self.recognition_failure()
+                return
+            await self.turn_completion.pause(turn_id, pause_ms, force=force)
+        else:
+            self.commit_recognition(turn_id, pause_ms)
+
+    async def commit_semantic_turn(self, turn_id, pause_ms, forced):
+        if not self.is_active or self.recognition_failed or not self.live_stt:
+            return
+        # Capture/close this audio window before yielding to the next VAD start.
+        self.commit_recognition(turn_id, pause_ms)
+        await self.send_json({"type": "turn_committed", "turn_id": turn_id,
+                              "pause_ms": pause_ms, "forced": forced})
+
+    async def respond_to_recognition(self, result, turn_id):
+        began = time.perf_counter()
+        try:
+            text = await asyncio.shield(result)
+            if not self.is_active or self.recognition_failed:
+                return
+            await self.send_json({"type": "telemetry_stt", "turn_id": turn_id,
+                                  "engine": "Deepgram Nova-3 streaming",
+                                  "latency_ms": round((time.perf_counter() - began) * 1000, 1),
+                                  "measurement": "turn_boundary_to_final_transcript"})
+            if text:
+                await self.handle_user_speech(text, turn_id)
+            else:
+                await self.send_json({"type": "stt_empty", "turn_id": turn_id,
+                                      "message": "No speech recognized. Please try speaking again."})
+        except asyncio.CancelledError:
+            raise
+        except Exception:
+            await self.recognition_failure()
+
+    async def close_recognition(self):
+        if self.turn_completion is not None:
+            await self.turn_completion.close()
+            self.turn_completion = None
+        if self.live_stt is not None:
+            await self.live_stt.close()
+            self.live_stt = None
 
     def provider_key(self, channel, env_name):
         return self.provider_keys.get(channel) if self.keys_managed else os.getenv(env_name)
 
     async def send_json(self, data: dict):
-        if self.is_active:
-            try:
-                await self.ws.send_text(json.dumps(data))
-            except Exception:
-                self.is_active = False
+        async with self.send_lock:
+            if self.is_active:
+                try:
+                    await self.ws.send_text(json.dumps(data))
+                except Exception:
+                    self.is_active = False
 
     async def transcribe_audio(self, audio_bytes: bytes, mime_type: str = "audio/webm") -> Optional[str]:
         """Transcribes incoming audio bytes using Deepgram Nova-3 or Groq Whisper."""
@@ -532,6 +639,8 @@ async def voice_websocket(ws: WebSocket):
     checked_session_at = 0.0
     try:
         while True:
+            if session.recognition_failed:
+                break
             if time.monotonic() - checked_session_at >= 1:
                 try:
                     user = await asyncio.to_thread(websocket_user, ws)
@@ -545,6 +654,7 @@ async def voice_websocket(ws: WebSocket):
             if session.keys_managed and call_started:
                 if time.monotonic()-started_at > session.config['max_duration_seconds'] or time.monotonic()-session.last_activity > session.config['silence_timeout_seconds']:
                     await cancel_turn(session)
+                    await session.close_recognition()
                     await session.send_json({'type':'call_ended','message':'The call reached its duration or inactivity limit.'})
                     break
             try:
@@ -580,6 +690,7 @@ async def voice_websocket(ws: WebSocket):
                         await ws.close(code=4401)
                         break
                     await cancel_turn(session)
+                    await session.close_recognition()
                     if getattr(session, 'keys_managed', False):
                         await session.close_record()
                     from app.platform.database import database
@@ -596,8 +707,13 @@ async def voice_websocket(ws: WebSocket):
                             db.add(call);db.flush();event(db,call,'started',{'draft':version is None});db.commit()
                             call_id=call.id
                         session=session_class()(ws,call_id)
+                        await session.start_recognition()
                     except Exception as exc:
-                        await session.send_json({'type':'error','message':getattr(exc,'detail','Could not load this agent')})
+                        await session.close_recognition()
+                        if session.keys_managed:
+                            await session.close_record("failed")
+                        await session.send_json({'type':'error','message':getattr(exc,'detail','Could not start this agent or its speech connection')})
+                        call_started = False
                         continue
                     session.messages.clear()
                     session.ending_call = False
@@ -605,17 +721,29 @@ async def voice_websocket(ws: WebSocket):
                     session.call_audio = CallAudio()
                     call_started = True
                     started_at = time.monotonic()
-                    await session.send_json({"type": "call_started", "call_id":session.call_id, "settings":session.config, "agent_name":agent.name})
+                    await session.send_json({"type": "call_started", "call_id":session.call_id, "settings":session.config, "agent_name":agent.name,
+                                             "turn_detection": {"semantic": bool(session.turn_completion),
+                                                 "candidate_pause_ms": session.turn_completion.timing.complete_ms if session.turn_completion else session.config["end_pause_ms"]}})
                     session.active_turn_task = asyncio.create_task(session.greet(msg.get("turn_id")))
                 elif kind == "media" and call_started:
                     frame = base64.b64decode(msg["media"]["payload"], validate=True)
-                    session.call_audio.feed(frame)
+                    if session.live_stt:
+                        await session.feed_recognition(frame)
+                    else:
+                        session.call_audio.feed(frame)
                 elif kind in {"speech_start", "interrupt"} and call_started:
                     await cancel_turn(session)
                     if kind == "speech_start":
-                        session.call_audio.start_speech()
+                        if session.live_stt:
+                            session.begin_recognition(msg.get("turn_id"))
+                        else:
+                            session.call_audio.start_speech()
                     await session.send_json({"type": "interrupted"})
                 elif kind == "speech_end" and call_started:
+                    if session.live_stt:
+                        await cancel_turn(session)
+                        await session.pause_recognition(msg.get("turn_id"), max(0, min(1800, int(msg.get("pause_ms", session.config["end_pause_ms"])))), force=bool(msg.get("force")))
+                        continue
                     audio = session.call_audio.end_speech()
                     if audio:
                         await cancel_turn(session)
@@ -625,12 +753,17 @@ async def voice_websocket(ws: WebSocket):
                     text = str(msg.get("text", "")).strip()[:4000]
                     if text:
                         await cancel_turn(session)
+                        if session.live_stt:
+                            if session.turn_completion:
+                                session.turn_completion.discard()
+                            session.live_stt.discard_turn()
                         session.active_turn_task = asyncio.create_task(
                             session.handle_user_speech(text, msg.get("turn_id")))
                 elif kind == "stop":
                     call_started = False
                     await cancel_turn(session)
-                    if session.keys_managed: await session.close_record()
+                    await session.close_recognition()
+                    if session.keys_managed: await session.close_record("failed" if session.recognition_failed else "completed")
                     session.call_audio = CallAudio()
                     await session.send_json({"type": "call_ended"})
             except (ValueError, KeyError, TypeError):
@@ -640,7 +773,8 @@ async def voice_websocket(ws: WebSocket):
     finally:
         session.is_active = False
         await cancel_turn(session)
-        if session.keys_managed: await session.close_record()
+        await session.close_recognition()
+        if session.keys_managed: await session.close_record("failed" if session.recognition_failed else "completed")
         logger.info("Client disconnected: %s", session.session_id)
 
 

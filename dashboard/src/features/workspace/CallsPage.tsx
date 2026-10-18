@@ -18,7 +18,7 @@ export function CallsPage({ agents, run, setCall, filtered }: Props) {
           }
         />
       ) : (
-        <Empty title="A clear record of every conversation">
+        <Empty title="No calls to display">
           Simulation and telephone calls will appear here with their
           transcripts, sources, and actions.
         </Empty>

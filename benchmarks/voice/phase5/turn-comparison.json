@@ -1,0 +1,204 @@
+{
+  "mode": "virtual_vad_plus_scripted_transcript_replay",
+  "scenario_sha256": "81e3db8b650f178a681cad98563c1378c5c221db3b7ad7c122acdcc98f14d830",
+  "baseline_matching_scenarios": 8,
+  "semantic_matching_scenarios": 10,
+  "rows": [
+    {
+      "scenario": "complete_thought",
+      "baseline_vad_turns": 1,
+      "semantic_commits": 1,
+      "expected_turns": 1,
+      "segmentation_matches_target": true,
+      "premature_commit_in_unfinished_pause": null,
+      "final_speech_end_to_commit_ms": 360,
+      "commits": [
+        {
+          "at_ms": 2360,
+          "forced": false,
+          "pause_ms": 360
+        }
+      ],
+      "failures": [],
+      "pending_tasks_after_close": 0
+    },
+    {
+      "scenario": "medication_names",
+      "baseline_vad_turns": 1,
+      "semantic_commits": 1,
+      "expected_turns": 1,
+      "segmentation_matches_target": true,
+      "premature_commit_in_unfinished_pause": null,
+      "final_speech_end_to_commit_ms": 360,
+      "commits": [
+        {
+          "at_ms": 3560,
+          "forced": false,
+          "pause_ms": 360
+        }
+      ],
+      "failures": [],
+      "pending_tasks_after_close": 0
+    },
+    {
+      "scenario": "numbers_and_units",
+      "baseline_vad_turns": 1,
+      "semantic_commits": 1,
+      "expected_turns": 1,
+      "segmentation_matches_target": true,
+      "premature_commit_in_unfinished_pause": null,
+      "final_speech_end_to_commit_ms": 360,
+      "commits": [
+        {
+          "at_ms": 4160,
+          "forced": false,
+          "pause_ms": 360
+        }
+      ],
+      "failures": [],
+      "pending_tasks_after_close": 0
+    },
+    {
+      "scenario": "date_of_birth_pause",
+      "baseline_vad_turns": 2,
+      "semantic_commits": 1,
+      "expected_turns": 1,
+      "segmentation_matches_target": true,
+      "premature_commit_in_unfinished_pause": false,
+      "final_speech_end_to_commit_ms": 360,
+      "commits": [
+        {
+          "at_ms": 5360,
+          "forced": false,
+          "pause_ms": 360
+        }
+      ],
+      "failures": [],
+      "pending_tasks_after_close": 0
+    },
+    {
+      "scenario": "unfinished_symptom_pause",
+      "baseline_vad_turns": 2,
+      "semantic_commits": 1,
+      "expected_turns": 1,
+      "segmentation_matches_target": true,
+      "premature_commit_in_unfinished_pause": false,
+      "final_speech_end_to_commit_ms": 360,
+      "commits": [
+        {
+          "at_ms": 4360,
+          "forced": false,
+          "pause_ms": 360
+        }
+      ],
+      "failures": [],
+      "pending_tasks_after_close": 0
+    },
+    {
+      "scenario": "ordinary_mid_sentence_pause",
+      "baseline_vad_turns": 1,
+      "semantic_commits": 1,
+      "expected_turns": 1,
+      "segmentation_matches_target": true,
+      "premature_commit_in_unfinished_pause": null,
+      "final_speech_end_to_commit_ms": 360,
+      "commits": [
+        {
+          "at_ms": 4360,
+          "forced": false,
+          "pause_ms": 360
+        }
+      ],
+      "failures": [],
+      "pending_tasks_after_close": 0
+    },
+    {
+      "scenario": "steady_room_noise",
+      "baseline_vad_turns": 0,
+      "semantic_commits": 0,
+      "expected_turns": 0,
+      "segmentation_matches_target": true,
+      "premature_commit_in_unfinished_pause": null,
+      "final_speech_end_to_commit_ms": null,
+      "commits": [],
+      "failures": [],
+      "pending_tasks_after_close": 0
+    },
+    {
+      "scenario": "brief_click",
+      "baseline_vad_turns": 0,
+      "semantic_commits": 0,
+      "expected_turns": 0,
+      "segmentation_matches_target": true,
+      "premature_commit_in_unfinished_pause": null,
+      "final_speech_end_to_commit_ms": null,
+      "commits": [],
+      "failures": [],
+      "pending_tasks_after_close": 0
+    },
+    {
+      "scenario": "non_speech_energy_burst",
+      "baseline_vad_turns": 1,
+      "semantic_commits": 1,
+      "expected_turns": 0,
+      "segmentation_matches_target": false,
+      "premature_commit_in_unfinished_pause": null,
+      "final_speech_end_to_commit_ms": 1200,
+      "commits": [
+        {
+          "at_ms": 1980,
+          "forced": false,
+          "pause_ms": 1200
+        }
+      ],
+      "failures": [],
+      "pending_tasks_after_close": 0
+    },
+    {
+      "scenario": "speech_over_background_noise",
+      "baseline_vad_turns": 1,
+      "semantic_commits": 1,
+      "expected_turns": 1,
+      "segmentation_matches_target": true,
+      "premature_commit_in_unfinished_pause": null,
+      "final_speech_end_to_commit_ms": 360,
+      "commits": [
+        {
+          "at_ms": 2760,
+          "forced": false,
+          "pause_ms": 360
+        }
+      ],
+      "failures": [],
+      "pending_tasks_after_close": 0
+    },
+    {
+      "scenario": "bounded_long_utterance",
+      "baseline_vad_turns": 2,
+      "semantic_commits": 2,
+      "expected_turns": 2,
+      "segmentation_matches_target": true,
+      "premature_commit_in_unfinished_pause": null,
+      "final_speech_end_to_commit_ms": 360,
+      "commits": [
+        {
+          "at_ms": 20600,
+          "forced": true,
+          "pause_ms": 0
+        },
+        {
+          "at_ms": 21960,
+          "forced": false,
+          "pause_ms": 360
+        }
+      ],
+      "failures": [],
+      "pending_tasks_after_close": 0
+    }
+  ],
+  "limitations": [
+    "Virtual 20ms frames, not wall-clock voice latency.",
+    "Transcript completeness cues are supplied; this does not measure ASR or clinical accuracy.",
+    "Energy VAD still triggers on the non-speech burst; this is deliberately retained as a failing scenario."
+  ]
+}

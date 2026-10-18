@@ -1,4 +1,4 @@
-import { AudioLines, X } from "lucide-react";
+import { X } from "lucide-react";
 import React, { useLayoutEffect, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 export function Badge({ value }: { value: string }) {
@@ -91,9 +91,6 @@ export function Empty({
 }) {
   return (
     <div className="empty">
-      <div className="empty-symbol">
-        <AudioLines size={28} />
-      </div>
       <h3>{title}</h3>
       <p>{children}</p>
       {action}
@@ -175,5 +172,23 @@ export function TimezoneSelect({
         </option>
       ))}
     </select>
+  );
+}
+
+/** Layout placeholder shared by route and resource loading states. */
+export function Skeleton({ label = "Loading" }: { label?: string }) {
+  return (
+    <div className="skeleton-panel card" role="status" aria-label={label}>
+      <span className="sr-only">{label}</span>
+      <div aria-hidden="true">
+        <div className="skeleton-line skeleton-title" />
+        {[0, 1, 2, 3].map((row) => (
+          <div className="skeleton-row" key={row}>
+            <span className="skeleton-line" />
+            <span className="skeleton-line" />
+          </div>
+        ))}
+      </div>
+    </div>
   );
 }

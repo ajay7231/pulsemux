@@ -47,9 +47,8 @@ export function AgentTest({
       </button>
       <div className="page-heading">
         <div>
-          <span className="eyebrow">AGENT / TEST CONVERSATION</span>
           <h1>{agent.name}</h1>
-          <p>Try your saved draft before your patients hear it.</p>
+          <p>Test conversation</p>
         </div>
         <span className="test-draft">Draft · revision {agent.revision}</span>
       </div>
@@ -159,14 +158,20 @@ export function AgentTest({
           <div className="section-heading">
             <div>
               <h2>Live transcript</h2>
-              <p>Your conversation, as it happens.</p>
             </div>
-            <AudioLines size={20} />
+            <button
+              className="text-button"
+              data-call="btn-export"
+              ref={initiallyDisableCallControl}
+              onClick={() => controller.current?.downloadMeasurements()}
+            >
+              Export timings
+            </button>
           </div>
           <div className="test-transcript-body">
             <div className="test-transcript-empty">
               <AudioLines size={28} />
-              <h3>A space for your conversation</h3>
+              <h3>No messages yet</h3>
               <p>Start a call to see what you and your agent say.</p>
             </div>
             <div
@@ -176,6 +181,18 @@ export function AgentTest({
               aria-label="Conversation messages"
               aria-live="polite"
             />
+            <aside
+              data-call="interim-container"
+              className="test-interim"
+              aria-label="Provisional speech recognition"
+              hidden
+            >
+              <div className="test-interim-heading">
+                <span>Hearing you</span>
+                <span>Not final</span>
+              </div>
+              <p data-call="interim-text" />
+            </aside>
           </div>
           <form
             className="test-message-form"
@@ -207,6 +224,8 @@ export function AgentTest({
           ["hud-ttft", "First response"],
           ["hud-tts", "Voice generation"],
           ["hud-total", "Turn duration"],
+          ["hud-speech-playback", "Speech → playback"],
+          ["hud-commit-playback", "Commit notice → playback"],
         ].map(([id, label]) => (
           <div key={id}>
             <span data-call={id === "hud-tts" ? "hud-tts-label" : undefined}>

@@ -1,0 +1,37 @@
+{
+  "mode": "live_semantic_synthetic",
+  "rows": [
+    {
+      "scenario": "complete_thought",
+      "responses": [
+        {
+          "text": "Please confirm my appointment.",
+          "turn_id": "complete_thought-0"
+        }
+      ],
+      "commit_count": 1,
+      "commits_during_incomplete_gap": 0,
+      "speech_boundary_to_commit_ms": 523.3,
+      "recognition_failed": false,
+      "pending_tasks_after_close": 0
+    },
+    {
+      "scenario": "unfinished_with_1000ms_gap",
+      "responses": [
+        {
+          "text": "Have been feeling dizzy since yesterday.",
+          "turn_id": "unfinished_with_1000ms_gap-1"
+        }
+      ],
+      "commit_count": 1,
+      "commits_during_incomplete_gap": 0,
+      "speech_boundary_to_commit_ms": 641.5,
+      "recognition_failed": false,
+      "pending_tasks_after_close": 0
+    }
+  ],
+  "limitations": [
+    "Two synthetic calls, not a latency or accuracy benchmark.",
+    "Scripted VAD boundaries; no microphone, LLM, retrieval or carrier call."
+  ]
+}

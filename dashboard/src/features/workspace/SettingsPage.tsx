@@ -72,7 +72,7 @@ export function SettingsPage({
               defaultValue={session.workspace.retention_days}
             />
           </Field>
-          <Button type="submit" disabled={busy || !isAdmin}>
+          <Button type="submit" kind="primary" disabled={busy || !isAdmin}>
             Save settings
           </Button>
         </form>

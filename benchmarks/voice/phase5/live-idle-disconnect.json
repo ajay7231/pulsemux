@@ -1,0 +1,14 @@
+{
+  "mode": "live_generated_silence_keepalive_disconnect",
+  "silence_seconds": 30,
+  "no_audio_keepalive_seconds": 15,
+  "wall_seconds": 46.42,
+  "healthy_before_injected_disconnect": true,
+  "failure_callback_count": 1,
+  "interim_events": 0,
+  "pending_tasks_after_close": 0,
+  "limitations": [
+    "One provider connection; no microphone, clinical content, LLM or carrier.",
+    "Disconnect is deliberately injected; this is not a natural outage observation."
+  ]
+}

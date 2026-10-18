@@ -27,7 +27,7 @@ import {
   workspaceKey,
 } from "./app/useWorkspaceQueries";
 import { ErrorBoundary } from "./components/ErrorBoundary";
-import { Button, Modal } from "./components/ui";
+import { Button, Modal, Skeleton } from "./components/ui";
 import type { AgentConfig } from "./contracts/schemas";
 import { ApiError } from "./lib/api";
 import { agentService, metadataService } from "./services/platform";
@@ -388,17 +388,17 @@ export function App() {
           </div>
           <span className="online-dot" />
         </div>
-        <div className="nav-label">WORKSPACE</div>
-        <nav>
+        <nav aria-label="Main navigation">
           {NAV.map(([key, label, Icon]) => (
             <button
               key={key}
+              title={label}
               className={page === key ? "active" : ""}
               aria-current={page === key ? "page" : undefined}
               onClick={() => navigate(key)}
             >
               <Icon size={18} />
-              {label}
+              <span className="nav-text">{label}</span>
               {key === "tasks" && overview.open_tasks > 0 && (
                 <span className="nav-count">{overview.open_tasks}</span>
               )}
@@ -406,13 +406,10 @@ export function App() {
           ))}
         </nav>
         <div className="sidebar-bottom">
-          <div className="hosted">
-            <span className="online-dot" />
-            Self-hosted workspace
-            <small>Your infrastructure. Your control.</small>
-          </div>
           <button
             className="profile"
+            title="Sign out"
+            aria-label={`Sign out ${session.user.name}`}
             onClick={() => {
               updateEditor(null);
               void auth.logout();
@@ -433,7 +430,7 @@ export function App() {
       <div className="main-shell">
         <header className="topbar">
           <span>
-            Workspace <span className="slash">/</span>{" "}
+            {session.workspace.name} <span className="slash">/</span>{" "}
             <strong>{LABELS[page]}</strong>
             {editor && (
               <>
@@ -457,13 +454,7 @@ export function App() {
           </div>
         </header>
         <main key={searchInputResetKey} id="workspace-content" tabIndex={-1}>
-          <Suspense
-            fallback={
-              <div className="loading" role="status">
-                Loading page…
-              </div>
-            }
-          >
+          <Suspense fallback={<Skeleton label="Loading page" />}>
             <ErrorBoundary resetKey={location.pathname}>
               {dataError && (
                 <div className="alert error" role="alert">
@@ -610,15 +601,6 @@ export function App() {
               )}
             </ErrorBoundary>
           </Suspense>
-          <footer className="page-footer">
-            <span>
-              PulseMux <span> / </span> Clinical voice operations
-            </span>
-            <span>
-              <span className="online-dot" />
-              Self-hosted · v0.2
-            </span>
-          </footer>
         </main>
       </div>
       <Suspense

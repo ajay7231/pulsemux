@@ -1,10 +1,4 @@
-import {
-  ChevronLeft,
-  Play,
-  ShieldCheck,
-  SlidersHorizontal,
-  Zap,
-} from "lucide-react";
+import { ChevronLeft, Play, ShieldCheck, Zap } from "lucide-react";
 import React from "react";
 import { Badge, Button } from "../../components/ui";
 import type { AgentConfig, ConfigUpdate } from "../../contracts/schemas";
@@ -69,10 +63,11 @@ export function AgentEditor({
             {editor.id ? editor.name : "Create an agent"}{" "}
             {editor.id && <Badge value={editor.status} />}
           </h1>
-          <p>Shape the conversation. Test it before your patients hear it.</p>
+          <p>{unsaved ? "Unsaved changes" : "Saved draft"}</p>
         </div>
         <div className="actions">
           <Button
+            kind={unsaved || !editor.id ? "primary" : ""}
             disabled={busy || !canEdit}
             onClick={() =>
               void run(async () => {
@@ -124,7 +119,7 @@ export function AgentEditor({
             Test agent
           </Button>
           <Button
-            kind="primary"
+            kind={unsaved || !editor.id ? "" : "primary"}
             disabled={busy || !editor.id || !isAdmin || unsaved}
             onClick={() =>
               void run(async () => {
@@ -175,10 +170,8 @@ export function AgentEditor({
         <section className="card editor-card">
           <div className="section-heading">
             <div>
-              <span className="eyebrow">AGENT CONFIGURATION</span>
               <h2>{agentTab}</h2>
             </div>
-            <SlidersHorizontal size={20} />
           </div>
           <AgentConfiguration
             {...{

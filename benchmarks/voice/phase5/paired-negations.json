@@ -1,0 +1,232 @@
+{
+  "schema_version": 1,
+  "mode": "paired_synthetic_release",
+  "generated_at": "2026-10-18T14:29:31Z",
+  "scenario_sha256": "966042f2746f8933c895a24a1ec70a835f83e3e7c7909dcc5a57504d137de401",
+  "configuration": {
+    "model": "qwen/qwen3.8-27b",
+    "voice": "af_bella",
+    "encoding": "mulaw",
+    "sample_rate": 8000,
+    "concurrency": 1,
+    "repetitions": 2,
+    "http_pause_ms": 800,
+    "streaming_candidate_ms": 360
+  },
+  "fixtures": [
+    {
+      "scenario": "negated_cancellation",
+      "variant": "clean",
+      "file": "negated_cancellation-clean.wav",
+      "sha256": "ee5cbffd8a9dc189f397109cd351782d367566deab171af041270ef645dafc53",
+      "audio_seconds": 2.06
+    },
+    {
+      "scenario": "negated_cancellation",
+      "variant": "digital_noise_20db",
+      "file": "negated_cancellation-digital_noise_20db.wav",
+      "sha256": "d5eb974114e3237a46185abfcc29e4fdf01d630326b3f3ef05148a4a5c759ef2",
+      "audio_seconds": 2.06
+    },
+    {
+      "scenario": "negated_dose",
+      "variant": "clean",
+      "file": "negated_dose-clean.wav",
+      "sha256": "a2184688ec47e0b6daa2170396cac871fcbc6f10114e6e7a6916d404170e93c9",
+      "audio_seconds": 4.24
+    },
+    {
+      "scenario": "negated_dose",
+      "variant": "digital_noise_20db",
+      "file": "negated_dose-digital_noise_20db.wav",
+      "sha256": "69b32f23220eb3e1ac4cf521e04b53ff4fb4ed0aacbedfd95d85dbe2e883c649",
+      "audio_seconds": 4.24
+    }
+  ],
+  "rows": [
+    {
+      "scenario": "negated_cancellation",
+      "repetition": 0,
+      "variant": "clean",
+      "pipeline": "http_fixed",
+      "reference": "I do not want to cancel my appointment.",
+      "audio_sha256": "ee5cbffd8a9dc189f397109cd351782d367566deab171af041270ef645dafc53",
+      "transcript": "I do not want to cancel my appointment.",
+      "completed": true,
+      "errors": [],
+      "commit_count": 1,
+      "speech_end_to_commit_ms": 802.85,
+      "speech_end_to_first_text_ms": 2003.76,
+      "speech_end_to_first_wav_ms": 3637.79,
+      "commit_to_first_wav_ms": 2834.93,
+      "pending_tasks_after_close": 0
+    },
+    {
+      "scenario": "negated_cancellation",
+      "repetition": 0,
+      "variant": "clean",
+      "pipeline": "streaming_semantic",
+      "reference": "I do not want to cancel my appointment.",
+      "audio_sha256": "ee5cbffd8a9dc189f397109cd351782d367566deab171af041270ef645dafc53",
+      "transcript": "I do not want to cancel my appointment.",
+      "completed": true,
+      "errors": [],
+      "commit_count": 1,
+      "speech_end_to_commit_ms": 569.34,
+      "speech_end_to_first_text_ms": 715.71,
+      "speech_end_to_first_wav_ms": 2404.49,
+      "commit_to_first_wav_ms": 1835.14,
+      "pending_tasks_after_close": 0
+    },
+    {
+      "scenario": "negated_dose",
+      "repetition": 0,
+      "variant": "clean",
+      "pipeline": "http_fixed",
+      "reference": "The test label says ninety milligrams, not ninety-five milligrams.",
+      "audio_sha256": "a2184688ec47e0b6daa2170396cac871fcbc6f10114e6e7a6916d404170e93c9",
+      "transcript": "The test label says ninety milligrams, not ninety five milligrams.",
+      "completed": true,
+      "errors": [],
+      "commit_count": 1,
+      "speech_end_to_commit_ms": 803.24,
+      "speech_end_to_first_text_ms": 2318.84,
+      "speech_end_to_first_wav_ms": 3330.66,
+      "commit_to_first_wav_ms": 2527.41,
+      "pending_tasks_after_close": 0
+    },
+    {
+      "scenario": "negated_dose",
+      "repetition": 0,
+      "variant": "clean",
+      "pipeline": "streaming_semantic",
+      "reference": "The test label says ninety milligrams, not ninety-five milligrams.",
+      "audio_sha256": "a2184688ec47e0b6daa2170396cac871fcbc6f10114e6e7a6916d404170e93c9",
+      "transcript": "The test label says ninety milligrams, not ninety five milligrams.",
+      "completed": true,
+      "errors": [],
+      "commit_count": 1,
+      "speech_end_to_commit_ms": 622.62,
+      "speech_end_to_first_text_ms": 751.44,
+      "speech_end_to_first_wav_ms": 1479.05,
+      "commit_to_first_wav_ms": 856.43,
+      "pending_tasks_after_close": 0
+    },
+    {
+      "scenario": "negated_cancellation",
+      "repetition": 1,
+      "variant": "digital_noise_20db",
+      "pipeline": "streaming_semantic",
+      "reference": "I do not want to cancel my appointment.",
+      "audio_sha256": "d5eb974114e3237a46185abfcc29e4fdf01d630326b3f3ef05148a4a5c759ef2",
+      "transcript": "Do not want to cancel my appointment.",
+      "completed": true,
+      "errors": [],
+      "commit_count": 1,
+      "speech_end_to_commit_ms": 637.35,
+      "speech_end_to_first_text_ms": 883.53,
+      "speech_end_to_first_wav_ms": 1727.25,
+      "commit_to_first_wav_ms": 1089.89,
+      "pending_tasks_after_close": 0
+    },
+    {
+      "scenario": "negated_cancellation",
+      "repetition": 1,
+      "variant": "digital_noise_20db",
+      "pipeline": "http_fixed",
+      "reference": "I do not want to cancel my appointment.",
+      "audio_sha256": "d5eb974114e3237a46185abfcc29e4fdf01d630326b3f3ef05148a4a5c759ef2",
+      "transcript": "Do not want to cancel my appointment.",
+      "completed": true,
+      "errors": [],
+      "commit_count": 1,
+      "speech_end_to_commit_ms": 804.26,
+      "speech_end_to_first_text_ms": 2032.45,
+      "speech_end_to_first_wav_ms": 2860.6,
+      "commit_to_first_wav_ms": 2056.34,
+      "pending_tasks_after_close": 0
+    },
+    {
+      "scenario": "negated_dose",
+      "repetition": 1,
+      "variant": "digital_noise_20db",
+      "pipeline": "streaming_semantic",
+      "reference": "The test label says ninety milligrams, not ninety-five milligrams.",
+      "audio_sha256": "69b32f23220eb3e1ac4cf521e04b53ff4fb4ed0aacbedfd95d85dbe2e883c649",
+      "transcript": "The test label says ninety milligrams, not ninety five milligrams.",
+      "completed": true,
+      "errors": [],
+      "commit_count": 1,
+      "speech_end_to_commit_ms": 622.13,
+      "speech_end_to_first_text_ms": 847.04,
+      "speech_end_to_first_wav_ms": 2207.29,
+      "commit_to_first_wav_ms": 1585.17,
+      "pending_tasks_after_close": 0
+    },
+    {
+      "scenario": "negated_dose",
+      "repetition": 1,
+      "variant": "digital_noise_20db",
+      "pipeline": "http_fixed",
+      "reference": "The test label says ninety milligrams, not ninety-five milligrams.",
+      "audio_sha256": "69b32f23220eb3e1ac4cf521e04b53ff4fb4ed0aacbedfd95d85dbe2e883c649",
+      "transcript": "The test label says ninety milligrams, not ninety five milligrams.",
+      "completed": true,
+      "errors": [],
+      "commit_count": 1,
+      "speech_end_to_commit_ms": 802.52,
+      "speech_end_to_first_text_ms": 2449.71,
+      "speech_end_to_first_wav_ms": 3156.42,
+      "commit_to_first_wav_ms": 2353.89,
+      "pending_tasks_after_close": 0
+    }
+  ],
+  "limitations": [
+    "Generated synthetic speech; not reviewed human/noise recordings.",
+    "Alternate clean/digital 20dB SNR noise; identical hashed audio in both configurations.",
+    "Scripted speech-end boundary after retained audio; segmentation is assessed separately.",
+    "First valid WAV emitted on server excludes browser decode, hardware and carrier playback.",
+    "Uses VoiceSession with a generic acknowledgement prompt; excludes managed hospital RAG.",
+    "Historical Phase 1 audio was not retained; this is a new matched baseline, not an identical historical replay."
+  ],
+  "summary": {
+    "http_fixed": {
+      "trials": 4,
+      "failed_trials": 0,
+      "speech_end_to_first_text_ms": {
+        "n": 4,
+        "p50_ms": 2175.64,
+        "p95_ms": 2449.71
+      },
+      "speech_end_to_first_wav_ms": {
+        "n": 4,
+        "p50_ms": 3243.54,
+        "p95_ms": 3637.79
+      },
+      "commit_to_first_wav_ms": {
+        "n": 4,
+        "p50_ms": 2440.65,
+        "p95_ms": 2834.93
+      }
+    },
+    "streaming_semantic": {
+      "trials": 4,
+      "failed_trials": 0,
+      "speech_end_to_first_text_ms": {
+        "n": 4,
+        "p50_ms": 799.24,
+        "p95_ms": 883.53
+      },
+      "speech_end_to_first_wav_ms": {
+        "n": 4,
+        "p50_ms": 1967.27,
+        "p95_ms": 2404.49
+      },
+      "commit_to_first_wav_ms": {
+        "n": 4,
+        "p50_ms": 1337.53,
+        "p95_ms": 1835.14
+      }
+    }
+  }
+}

@@ -23,17 +23,19 @@ export class ErrorBoundary extends Component<
   }
   render() {
     return this.state.failed ? (
-      <section className="card padded" role="alert">
+      <section className="card padded error-state" role="alert">
         <h1>This page couldn’t be displayed.</h1>
         <p>
           Reload to reconnect. Any unsaved changes may need to be entered again.
         </p>
-        <button className="button primary" onClick={() => location.reload()}>
-          Reload application
-        </button>
-        <a className="button" href="/dashboard/overview">
-          Go to overview
-        </a>
+        <div className="actions">
+          <button className="button primary" onClick={() => location.reload()}>
+            Reload application
+          </button>
+          <a className="button" href="/dashboard/overview">
+            Go to overview
+          </a>
+        </div>
       </section>
     ) : (
       this.props.children

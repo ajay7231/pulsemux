@@ -1,0 +1,10 @@
+**
+!scripts/
+!scripts/*.py
+!scripts/*.cjs
+!benchmarks/
+!benchmarks/voice/
+!benchmarks/voice/*.json
+!worker-py/
+!worker-py/tests/
+!worker-py/tests/**

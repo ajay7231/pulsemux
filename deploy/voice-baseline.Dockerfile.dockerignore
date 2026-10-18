@@ -1,0 +1,8 @@
+**
+!scripts/
+!scripts/voice_latency_baseline.py
+!scripts/score_voice_baseline.py
+!benchmarks/
+!benchmarks/voice/
+!benchmarks/voice/scenarios.json
+!benchmarks/voice/normalization.json

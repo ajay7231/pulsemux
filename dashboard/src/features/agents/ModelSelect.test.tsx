@@ -1,9 +1,32 @@
-import { cleanup, render, screen, waitFor } from "@testing-library/react";
+import {
+  cleanup,
+  render as baseRender,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, expect, test, vi } from "vitest";
 import { ModelSelect } from "./ModelSelect";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import type { ReactNode } from "react";
+vi.mock("../../app/SessionProvider", () => ({
+  useSession: () => ({ session: { workspace: { id: "hospital" } } }),
+}));
+const clients: QueryClient[] = [];
+function render(ui: ReactNode) {
+  const client = new QueryClient({
+    defaultOptions: { queries: { retry: false } },
+  });
+  clients.push(client);
+  return baseRender(ui, {
+    wrapper: ({ children }) => (
+      <QueryClientProvider client={client}>{children}</QueryClientProvider>
+    ),
+  });
+}
 afterEach(() => {
   cleanup();
+  clients.splice(0).forEach((client) => client.clear());
   vi.unstubAllGlobals();
 });
 test("loads account models and selects a model without typing an identifier", async () => {
@@ -13,6 +36,7 @@ test("loads account models and selects a model without typing an identifier", as
       async () =>
         new Response(
           JSON.stringify({
+            provider: "groq",
             models: [{ id: "llama-example", name: "Llama example" }],
           }),
         ),
@@ -42,7 +66,10 @@ test("a failed catalog can be retried and missing saved models remain visibly un
       )
       .mockResolvedValueOnce(
         new Response(
-          JSON.stringify({ models: [{ id: "new-model", name: "New model" }] }),
+          JSON.stringify({
+            provider: "groq",
+            models: [{ id: "new-model", name: "New model" }],
+          }),
         ),
       ),
   );
@@ -78,7 +105,10 @@ test("changing accounts discards late results from the previous account", async 
       )
       .mockResolvedValueOnce(
         new Response(
-          JSON.stringify({ models: [{ id: "gpt-4.1", name: "GPT 4.1" }] }),
+          JSON.stringify({
+            provider: "groq",
+            models: [{ id: "gpt-4.1", name: "GPT 4.1" }],
+          }),
         ),
       ),
   );
@@ -91,7 +121,10 @@ test("changing accounts discards late results from the previous account", async 
   await screen.findByRole("option", { name: "GPT 4.1" });
   oldResult(
     new Response(
-      JSON.stringify({ models: [{ id: "old-model", name: "Old model" }] }),
+      JSON.stringify({
+        provider: "groq",
+        models: [{ id: "old-model", name: "Old model" }],
+      }),
     ),
   );
   await waitFor(() =>

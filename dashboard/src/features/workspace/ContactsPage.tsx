@@ -56,7 +56,7 @@ export function ContactsPage({ canEdit, startModal, filtered }: Props) {
           </table>
         </div>
       ) : (
-        <Empty title="Thoughtful outreach starts with consent">
+        <Empty title="No contacts to display">
           Add a contact and their calling preferences before scheduling an
           outbound call.
         </Empty>

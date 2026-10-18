@@ -1,0 +1,67 @@
+{
+  "schema_version": 1,
+  "mode": "local_tts_only",
+  "generated_at": "2026-10-18T08:44:22Z",
+  "clock": "time.perf_counter",
+  "python": "3.12.15",
+  "voice_session_sha256": "6fbcc6cbc34c25f8cce05f2e9cedb6c8202f720ed3542ca23cf69b8deed02297",
+  "rows": [
+    {
+      "sample": 0,
+      "temperature": "cold",
+      "wav_generation_ms": 1467.12,
+      "wav_bytes": 120876
+    },
+    {
+      "sample": 1,
+      "temperature": "warm",
+      "wav_generation_ms": 669.82,
+      "wav_bytes": 120876
+    },
+    {
+      "sample": 2,
+      "temperature": "warm",
+      "wav_generation_ms": 611.46,
+      "wav_bytes": 120876
+    },
+    {
+      "sample": 3,
+      "temperature": "warm",
+      "wav_generation_ms": 585.83,
+      "wav_bytes": 120876
+    },
+    {
+      "sample": 4,
+      "temperature": "warm",
+      "wav_generation_ms": 582.68,
+      "wav_bytes": 120876
+    },
+    {
+      "sample": 5,
+      "temperature": "warm",
+      "wav_generation_ms": 635.2,
+      "wav_bytes": 120876
+    }
+  ],
+  "configuration": {
+    "tts_engine": "kokoro",
+    "voice": "af_bella",
+    "repetitions": 5
+  },
+  "warm_tts": {
+    "n": 5,
+    "p50_ms": 611.46,
+    "p95_ms": 669.82
+  },
+  "unmeasured": [
+    "speech recognition",
+    "first response text",
+    "speech-end to first audible output",
+    "browser/carrier playback",
+    "recognition accuracy"
+  ],
+  "limitations": [
+    "Local clause WAV generation only, not end-to-end voice latency.",
+    "Cold means the first invocation in this process; host disk caches may already be warm."
+  ]
+}

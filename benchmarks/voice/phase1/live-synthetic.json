@@ -1,0 +1,528 @@
+{
+  "schema_version": 1,
+  "mode": "live_synthetic",
+  "generated_at": "2026-10-18T13:11:39Z",
+  "clock": "time.perf_counter",
+  "python": "3.12.15",
+  "voice_session_sha256": "6fbcc6cbc34c25f8cce05f2e9cedb6c8202f720ed3542ca23cf69b8deed02297",
+  "rows": [
+    {
+      "scenario": "complete_thought",
+      "repetition": 0,
+      "reference": "I would like to confirm my appointment.",
+      "transcript": "I would like to confirm my appointment.",
+      "critical_terms": [
+        "confirm",
+        "appointment"
+      ],
+      "stt_ms": 1769.65,
+      "first_response_text_ms": 1942.4,
+      "first_playable_wav_ms": 2548.55,
+      "completed": true,
+      "errors": []
+    },
+    {
+      "scenario": "complete_thought",
+      "repetition": 1,
+      "reference": "I would like to confirm my appointment.",
+      "transcript": "I would like to confirm my appointment.",
+      "critical_terms": [
+        "confirm",
+        "appointment"
+      ],
+      "stt_ms": 1555.07,
+      "first_response_text_ms": 1688.88,
+      "first_playable_wav_ms": 2424.17,
+      "completed": true,
+      "errors": []
+    },
+    {
+      "scenario": "complete_thought",
+      "repetition": 2,
+      "reference": "I would like to confirm my appointment.",
+      "transcript": "I would like to confirm my appointment.",
+      "critical_terms": [
+        "confirm",
+        "appointment"
+      ],
+      "stt_ms": 1753.17,
+      "first_response_text_ms": 1886.38,
+      "first_playable_wav_ms": 2616.38,
+      "completed": true,
+      "errors": []
+    },
+    {
+      "scenario": "complete_thought",
+      "repetition": 3,
+      "reference": "I would like to confirm my appointment.",
+      "transcript": "I would like to confirm my appointment.",
+      "critical_terms": [
+        "confirm",
+        "appointment"
+      ],
+      "stt_ms": 1611.44,
+      "first_response_text_ms": 1754.18,
+      "first_playable_wav_ms": 2535.09,
+      "completed": true,
+      "errors": []
+    },
+    {
+      "scenario": "medication_names",
+      "repetition": 0,
+      "reference": "My prescription lists ticagrelor, Brilinta, and metoprolol.",
+      "transcript": "My prescription lists ticagrelor, Brilinta, and metoprolol.",
+      "critical_terms": [
+        "ticagrelor",
+        "Brilinta",
+        "metoprolol"
+      ],
+      "stt_ms": 1671.11,
+      "first_response_text_ms": 1810.04,
+      "first_playable_wav_ms": 3031.06,
+      "completed": true,
+      "errors": []
+    },
+    {
+      "scenario": "medication_names",
+      "repetition": 1,
+      "reference": "My prescription lists ticagrelor, Brilinta, and metoprolol.",
+      "transcript": "My prescription lists ticagrelor, Brilinta, and metoprolol.",
+      "critical_terms": [
+        "ticagrelor",
+        "Brilinta",
+        "metoprolol"
+      ],
+      "stt_ms": 1776.0,
+      "first_response_text_ms": 1912.81,
+      "first_playable_wav_ms": 2951.6,
+      "completed": true,
+      "errors": []
+    },
+    {
+      "scenario": "medication_names",
+      "repetition": 2,
+      "reference": "My prescription lists ticagrelor, Brilinta, and metoprolol.",
+      "transcript": "My prescription lists ticagrelor, Brilinta, and metoprolol.",
+      "critical_terms": [
+        "ticagrelor",
+        "Brilinta",
+        "metoprolol"
+      ],
+      "stt_ms": 2058.67,
+      "first_response_text_ms": 2199.27,
+      "first_playable_wav_ms": 3247.56,
+      "completed": true,
+      "errors": []
+    },
+    {
+      "scenario": "medication_names",
+      "repetition": 3,
+      "reference": "My prescription lists ticagrelor, Brilinta, and metoprolol.",
+      "transcript": "My prescription lists ticagrelor, Brilinta, and metoprolol.",
+      "critical_terms": [
+        "ticagrelor",
+        "Brilinta",
+        "metoprolol"
+      ],
+      "stt_ms": 1957.81,
+      "first_response_text_ms": 2157.97,
+      "first_playable_wav_ms": 2885.16,
+      "completed": true,
+      "errors": []
+    },
+    {
+      "scenario": "numbers_and_units",
+      "repetition": 0,
+      "reference": "This is a test. The reading is 155 over 95 and the label says 90 milligrams.",
+      "transcript": "This is a test. The reading is 150 fiveninety five, and the label says ninety milligrams.",
+      "critical_terms": [
+        "155",
+        "95",
+        "90",
+        "milligrams"
+      ],
+      "stt_ms": 2279.78,
+      "first_response_text_ms": 2545.39,
+      "first_playable_wav_ms": 3197.12,
+      "completed": true,
+      "errors": []
+    },
+    {
+      "scenario": "numbers_and_units",
+      "repetition": 1,
+      "reference": "This is a test. The reading is 155 over 95 and the label says 90 milligrams.",
+      "transcript": "This is a test. The reading is 150 fiveninety five, and the label says ninety milligrams.",
+      "critical_terms": [
+        "155",
+        "95",
+        "90",
+        "milligrams"
+      ],
+      "stt_ms": 2168.93,
+      "first_response_text_ms": 2340.93,
+      "first_playable_wav_ms": 3484.32,
+      "completed": true,
+      "errors": []
+    },
+    {
+      "scenario": "numbers_and_units",
+      "repetition": 2,
+      "reference": "This is a test. The reading is 155 over 95 and the label says 90 milligrams.",
+      "transcript": "This is a test. The reading is 150 fiveninety five, and the label says ninety milligrams.",
+      "critical_terms": [
+        "155",
+        "95",
+        "90",
+        "milligrams"
+      ],
+      "stt_ms": 2413.33,
+      "first_response_text_ms": 2632.4,
+      "first_playable_wav_ms": 3534.47,
+      "completed": true,
+      "errors": []
+    },
+    {
+      "scenario": "numbers_and_units",
+      "repetition": 3,
+      "reference": "This is a test. The reading is 155 over 95 and the label says 90 milligrams.",
+      "transcript": "This is a test. The reading is 150 fiveninety five, and the label says ninety milligrams.",
+      "critical_terms": [
+        "155",
+        "95",
+        "90",
+        "milligrams"
+      ],
+      "stt_ms": 2361.25,
+      "first_response_text_ms": 2493.08,
+      "first_playable_wav_ms": 3149.09,
+      "completed": true,
+      "errors": []
+    },
+    {
+      "scenario": "date_of_birth_pause",
+      "repetition": 0,
+      "reference": "My date of birth is ... the fifth of March, nineteen eighty-five.",
+      "transcript": "My date of birth is the 03/05/1985.",
+      "critical_terms": [
+        "fifth",
+        "March",
+        "1985"
+      ],
+      "stt_ms": 1868.04,
+      "first_response_text_ms": 2007.45,
+      "first_playable_wav_ms": 2499.91,
+      "completed": true,
+      "errors": []
+    },
+    {
+      "scenario": "date_of_birth_pause",
+      "repetition": 1,
+      "reference": "My date of birth is ... the fifth of March, nineteen eighty-five.",
+      "transcript": "My date of birth is the 03/05/1985.",
+      "critical_terms": [
+        "fifth",
+        "March",
+        "1985"
+      ],
+      "stt_ms": 2007.82,
+      "first_response_text_ms": 2220.31,
+      "first_playable_wav_ms": 2690.69,
+      "completed": true,
+      "errors": []
+    },
+    {
+      "scenario": "date_of_birth_pause",
+      "repetition": 2,
+      "reference": "My date of birth is ... the fifth of March, nineteen eighty-five.",
+      "transcript": "My date of birth is the 03/05/1985.",
+      "critical_terms": [
+        "fifth",
+        "March",
+        "1985"
+      ],
+      "stt_ms": 1995.11,
+      "first_response_text_ms": 2134.04,
+      "first_playable_wav_ms": 2648.21,
+      "completed": true,
+      "errors": []
+    },
+    {
+      "scenario": "date_of_birth_pause",
+      "repetition": 3,
+      "reference": "My date of birth is ... the fifth of March, nineteen eighty-five.",
+      "transcript": "My date of birth is the 03/05/1985.",
+      "critical_terms": [
+        "fifth",
+        "March",
+        "1985"
+      ],
+      "stt_ms": 1923.15,
+      "first_response_text_ms": 2061.02,
+      "first_playable_wav_ms": 2592.99,
+      "completed": true,
+      "errors": []
+    },
+    {
+      "scenario": "unfinished_symptom_pause",
+      "repetition": 0,
+      "reference": "I have been feeling ... dizzy since yesterday.",
+      "transcript": "I have been feeling dizzy since yesterday.",
+      "critical_terms": [
+        "dizzy",
+        "yesterday"
+      ],
+      "stt_ms": 1916.86,
+      "first_response_text_ms": 2117.72,
+      "first_playable_wav_ms": 2738.45,
+      "completed": true,
+      "errors": []
+    },
+    {
+      "scenario": "unfinished_symptom_pause",
+      "repetition": 1,
+      "reference": "I have been feeling ... dizzy since yesterday.",
+      "transcript": "I have been feeling dizzy since yesterday.",
+      "critical_terms": [
+        "dizzy",
+        "yesterday"
+      ],
+      "stt_ms": 1558.11,
+      "first_response_text_ms": 1690.97,
+      "first_playable_wav_ms": 2450.59,
+      "completed": true,
+      "errors": []
+    },
+    {
+      "scenario": "unfinished_symptom_pause",
+      "repetition": 2,
+      "reference": "I have been feeling ... dizzy since yesterday.",
+      "transcript": "I have been feeling dizzy since yesterday.",
+      "critical_terms": [
+        "dizzy",
+        "yesterday"
+      ],
+      "stt_ms": 1794.48,
+      "first_response_text_ms": 1953.92,
+      "first_playable_wav_ms": 3032.48,
+      "completed": true,
+      "errors": []
+    },
+    {
+      "scenario": "unfinished_symptom_pause",
+      "repetition": 3,
+      "reference": "I have been feeling ... dizzy since yesterday.",
+      "transcript": "I have been feeling dizzy since yesterday.",
+      "critical_terms": [
+        "dizzy",
+        "yesterday"
+      ],
+      "stt_ms": 1767.2,
+      "first_response_text_ms": 1900.16,
+      "first_playable_wav_ms": 2717.0,
+      "completed": true,
+      "errors": []
+    },
+    {
+      "scenario": "ordinary_mid_sentence_pause",
+      "repetition": 0,
+      "reference": "I called yesterday, and I am checking whether someone can call back.",
+      "transcript": "I called yesterday, and I am checking whether someone can call back.",
+      "critical_terms": [
+        "yesterday",
+        "call back"
+      ],
+      "stt_ms": 1664.44,
+      "first_response_text_ms": 1817.48,
+      "first_playable_wav_ms": 2441.71,
+      "completed": true,
+      "errors": []
+    },
+    {
+      "scenario": "ordinary_mid_sentence_pause",
+      "repetition": 1,
+      "reference": "I called yesterday, and I am checking whether someone can call back.",
+      "transcript": "I called yesterday, and I am checking whether someone can call back.",
+      "critical_terms": [
+        "yesterday",
+        "call back"
+      ],
+      "stt_ms": 1618.59,
+      "first_response_text_ms": 1778.82,
+      "first_playable_wav_ms": 2588.78,
+      "completed": true,
+      "errors": []
+    },
+    {
+      "scenario": "ordinary_mid_sentence_pause",
+      "repetition": 2,
+      "reference": "I called yesterday, and I am checking whether someone can call back.",
+      "transcript": "I called yesterday, and I am checking whether someone can call back.",
+      "critical_terms": [
+        "yesterday",
+        "call back"
+      ],
+      "stt_ms": 1626.44,
+      "first_response_text_ms": 1809.83,
+      "first_playable_wav_ms": 2763.61,
+      "completed": true,
+      "errors": []
+    },
+    {
+      "scenario": "ordinary_mid_sentence_pause",
+      "repetition": 3,
+      "reference": "I called yesterday, and I am checking whether someone can call back.",
+      "transcript": "I called yesterday, and I am checking whether someone can call back.",
+      "critical_terms": [
+        "yesterday",
+        "call back"
+      ],
+      "stt_ms": 2195.37,
+      "first_response_text_ms": 2321.08,
+      "first_playable_wav_ms": 3161.8,
+      "completed": true,
+      "errors": []
+    },
+    {
+      "scenario": "speech_over_background_noise",
+      "repetition": 0,
+      "reference": "Please arrange a callback for tomorrow.",
+      "transcript": "Please arrange a callback for tomorrow.",
+      "critical_terms": [
+        "callback",
+        "tomorrow"
+      ],
+      "stt_ms": 1841.05,
+      "first_response_text_ms": 1971.33,
+      "first_playable_wav_ms": 2746.69,
+      "completed": true,
+      "errors": []
+    },
+    {
+      "scenario": "speech_over_background_noise",
+      "repetition": 1,
+      "reference": "Please arrange a callback for tomorrow.",
+      "transcript": "Please arrange a callback for tomorrow.",
+      "critical_terms": [
+        "callback",
+        "tomorrow"
+      ],
+      "stt_ms": 1495.1,
+      "first_response_text_ms": 1636.99,
+      "first_playable_wav_ms": 2343.14,
+      "completed": true,
+      "errors": []
+    },
+    {
+      "scenario": "speech_over_background_noise",
+      "repetition": 2,
+      "reference": "Please arrange a callback for tomorrow.",
+      "transcript": "Please arrange a callback for tomorrow.",
+      "critical_terms": [
+        "callback",
+        "tomorrow"
+      ],
+      "stt_ms": 1581.52,
+      "first_response_text_ms": 1769.67,
+      "first_playable_wav_ms": 2529.5,
+      "completed": true,
+      "errors": []
+    },
+    {
+      "scenario": "speech_over_background_noise",
+      "repetition": 3,
+      "reference": "Please arrange a callback for tomorrow.",
+      "transcript": "Please arrange a callback for tomorrow.",
+      "critical_terms": [
+        "callback",
+        "tomorrow"
+      ],
+      "stt_ms": 1617.05,
+      "first_response_text_ms": 1745.72,
+      "first_playable_wav_ms": 2535.65,
+      "completed": true,
+      "errors": []
+    },
+    {
+      "scenario": "bounded_long_utterance",
+      "repetition": 0,
+      "reference": "A synthetic sustained utterance for capture-limit verification.",
+      "transcript": "A synthetic sustained utterance for capture limit verification.",
+      "critical_terms": [],
+      "stt_ms": 1673.18,
+      "first_response_text_ms": 1804.31,
+      "first_playable_wav_ms": 2663.84,
+      "completed": true,
+      "errors": []
+    },
+    {
+      "scenario": "bounded_long_utterance",
+      "repetition": 1,
+      "reference": "A synthetic sustained utterance for capture-limit verification.",
+      "transcript": "A synthetic sustained utterance for capture limit verification.",
+      "critical_terms": [],
+      "stt_ms": 2482.51,
+      "first_response_text_ms": 2660.66,
+      "first_playable_wav_ms": 3709.42,
+      "completed": true,
+      "errors": []
+    },
+    {
+      "scenario": "bounded_long_utterance",
+      "repetition": 2,
+      "reference": "A synthetic sustained utterance for capture-limit verification.",
+      "transcript": "A synthetic sustained utterance for capture limit verification.",
+      "critical_terms": [],
+      "stt_ms": 1580.02,
+      "first_response_text_ms": 1713.17,
+      "first_playable_wav_ms": 2582.83,
+      "completed": true,
+      "errors": []
+    },
+    {
+      "scenario": "bounded_long_utterance",
+      "repetition": 3,
+      "reference": "A synthetic sustained utterance for capture-limit verification.",
+      "transcript": "A synthetic sustained utterance for capture limit verification.",
+      "critical_terms": [],
+      "stt_ms": 1868.47,
+      "first_response_text_ms": 1994.16,
+      "first_playable_wav_ms": 2819.54,
+      "completed": true,
+      "errors": []
+    }
+  ],
+  "configuration": {
+    "tts_engine": "kokoro",
+    "voice": "af_bella",
+    "repetitions": 4,
+    "stt_engine": "deepgram",
+    "llm_model": "qwen/qwen3.8-27b"
+  },
+  "scenario_sha256": "81e3db8b650f178a681cad98563c1378c5c221db3b7ad7c122acdcc98f14d830",
+  "summary": {
+    "stt_ms": {
+      "n": 32,
+      "p50_ms": 1785.24,
+      "p95_ms": 2413.33
+    },
+    "first_response_text_ms": {
+      "n": 32,
+      "p50_ms": 1948.16,
+      "p95_ms": 2632.4
+    },
+    "first_playable_wav_ms": {
+      "n": 32,
+      "p50_ms": 2703.85,
+      "p95_ms": 3534.47
+    }
+  },
+  "failed_trials": 0,
+  "limitations": [
+    "Synthetic Kokoro speech; no microphone, room acoustics, or actual patient recordings.",
+    "Starts at completed-WAV submission; excludes VAD waiting, capture, retrieval, browser decode/playback, and carrier delay.",
+    "Uses VoiceSession directly, not the managed dashboard transport or hospital knowledge. Not a clinical accuracy test.",
+    "WAV receipt means playable audio available on server, not audio heard by caller.",
+    "Sample order includes provider cold and warm behavior; small-sample percentiles are descriptive only.",
+    "References require human normalization review for numbers, units and dates; no automatic clinical accuracy verdict."
+  ]
+}

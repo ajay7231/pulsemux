@@ -44,17 +44,16 @@ export function AuthPage({
         PulseMux<span>CLINICAL VOICE OPERATIONS</span>
       </div>
       <section className="auth-card">
-        <div className="eyebrow">YOUR HOSPITAL. YOUR AGENTS.</div>
         <h1>
           {loading
             ? "Connecting…"
             : setup
-              ? "A better way to stay connected."
+              ? "Create your workspace"
               : "Welcome back."}
         </h1>
         <p>
           {setup
-            ? "Create your workspace to build, test, and manage your hospital’s voice agents."
+            ? "Set up your hospital’s voice operations."
             : "Sign in to your clinical voice workspace."}
         </p>
         {error && (
@@ -139,8 +138,7 @@ export function AuthPage({
               </>
             ) : (
               <>
-                Use the email and password registered with your hospital on this
-                server.
+                Use your hospital account to sign in.
                 {setupAvailable && (
                   <>
                     <br />
@@ -156,7 +154,6 @@ export function AuthPage({
           Self-hosted · Credentials encrypted at rest
         </div>
       </section>
-      <span className="auth-bottom">Built for thoughtful conversations.</span>
     </div>
   );
 }

@@ -1,14 +1,13 @@
 import {
   Activity,
+  CalendarClock,
+  CheckCircle2,
   ArrowRight,
   AudioLines,
   Bot,
-  CalendarClock,
   Check,
-  CheckCircle2,
   ClipboardList,
   Megaphone,
-  ShieldCheck,
 } from "lucide-react";
 import { Button, Empty } from "../../components/ui";
 import { Page } from "../../lib/types";
@@ -96,7 +95,7 @@ export function OverviewPage({
           ],
           [
             ClipboardList,
-            "Needs a human",
+            "Open staff tasks",
             overview.open_tasks || 0,
             "Open staff follow-ups",
           ],
@@ -119,7 +118,6 @@ export function OverviewPage({
           <div className="section-heading">
             <div>
               <h2>Recent conversations</h2>
-              <p>Every call leaves a clear next step.</p>
             </div>
             <button className="text-button" onClick={() => navigate("calls")}>
               View all
@@ -145,12 +143,7 @@ export function OverviewPage({
           )}
         </section>
         <section className="card getting-started">
-          <span className="eyebrow">MAKE IT YOURS</span>
-          <h2>
-            A workspace ready
-            <br />
-            for your team.
-          </h2>
+          <h2>Workspace setup</h2>
           {[
             [overview.connections > 0, "Connect your providers", "connections"],
             [overview.agents > 0, "Create your first agent", "agents"],
@@ -165,12 +158,6 @@ export function OverviewPage({
               <ArrowRight size={14} />
             </button>
           ))}
-          <div className="quiet-note">
-            <ShieldCheck size={17} />
-            Your credentials stay encrypted.
-            <br />
-            Your workspace stays yours.
-          </div>
         </section>
       </div>
     </>
