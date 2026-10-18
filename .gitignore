@@ -20,3 +20,14 @@ ENV/
 .DS_Store
 .idea/
 .vscode/
+
+# Environment secrets
+.env
+*.env
+
+# Local models and venvs
+worker-py/.venv/
+worker-py/models/
+*.onnx
+*.bin
+Plan.md

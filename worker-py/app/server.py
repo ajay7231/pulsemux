@@ -6,6 +6,9 @@ import time
 import uuid
 from typing import AsyncGenerator, Dict, Optional
 
+from dotenv import load_dotenv
+load_dotenv()
+
 # Try enabling uvloop if available
 try:
     import uvloop
@@ -37,7 +40,7 @@ class CallPipelineContext:
         self.patient_id = patient_id
         self.triage_graph = triage_graph
 
-        self.stt = STTStreamClient()
+        self.stt = STTStreamClient(groq_api_key=os.getenv("GROQ_API_KEY"))
         self.turn_detector = TurnDetector()
         self.tts = TTSStreamClient()
         self.canceller = CancellationEngine()
@@ -63,7 +66,10 @@ class PulseVoiceService:
     """Core Voice Orchestrator business logic."""
 
     def __init__(self):
-        self.triage_graph = ClinicalTriageGraph(redis_url=os.getenv("REDIS_URL"))
+        self.triage_graph = ClinicalTriageGraph(
+            redis_url=os.getenv("REDIS_URL"),
+            groq_api_key=os.getenv("GROQ_API_KEY"),
+        )
         self.active_calls: Dict[str, CallPipelineContext] = {}
 
     def get_or_create_context(self, call_id: str, patient_id: str = "anon") -> CallPipelineContext:

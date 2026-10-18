@@ -109,14 +109,26 @@ class ClinicalTriageGraph:
     Provides execution step method and streaming token simulation.
     """
 
-    def __init__(self, redis_url: Optional[str] = None):
+    def __init__(self, redis_url: Optional[str] = None, groq_api_key: Optional[str] = None):
+        import os
         self.redis_url = redis_url
-        logger.info(f"Initialized ClinicalTriageGraph (Redis: {redis_url or 'in-memory'})")
+        self.groq_api_key = groq_api_key or os.getenv("GROQ_API_KEY")
+        self.groq_model = os.getenv("GROQ_MODEL", "qwen/qwen3.8-27b")
+        logger.info(
+            f"Initialized ClinicalTriageGraph (Redis: {redis_url or 'in-memory'}, "
+            f"Groq: {'Active (' + self.groq_model + ')' if self.groq_api_key else 'Offline/Rule-based'})"
+        )
 
     async def step(self, state: ClinicalState) -> ClinicalState:
         """Executes the state transition cycle based on current state."""
         current = state.get("current_node", "INIT")
+        user_msg = state["messages"][-1]["content"] if state["messages"] else ""
 
+        if self.groq_api_key:
+            # Groq-powered clinical reasoning
+            return await self._step_groq(state, user_msg)
+
+        # Fallback rule-based state machine
         if current in ("INIT", "CONFIRMATION"):
             out = triage_symptoms_node(state)
             state.update(out)
@@ -138,10 +150,107 @@ class ClinicalTriageGraph:
 
         return state
 
+    async def _step_groq(self, state: ClinicalState, user_msg: str) -> ClinicalState:
+        """Runs clinical reasoning using ultra-fast Groq LPU inference."""
+        import httpx
+        import json
+
+        # 1. Quick red-flag check
+        eval_result = check_red_flag_symptoms(user_msg)
+        is_emergency = eval_result["is_emergency"]
+
+        headers = {
+            "Authorization": f"Bearer {self.groq_api_key}",
+            "Content-Type": "application/json",
+        }
+
+        system_prompt = (
+            "You are PulseMux, an ultra-low latency clinical triage voice assistant. "
+            "Your output will be spoken aloud to a patient via TTS. "
+            "CRITICAL INSTRUCTIONS: "
+            "1. If patient shows RED FLAGS (chest pain, stroke symptoms, acute shortness of breath, severe bleeding): "
+            "   Command them immediately and calmly to call emergency services (911/112), sit down, and do not drive. "
+            "2. If symptoms are non-emergency: "
+            "   Acknowledge their condition empathetically, offer concise care guidance, and offer to schedule an appointment. "
+            "3. Keep your spoken response strictly to 1 to 2 clear sentences. Never use Markdown bullet points or asterisks."
+        )
+
+        messages = [{"role": "system", "content": system_prompt}]
+        for m in state.get("messages", [])[-4:]:
+            messages.append({"role": m["role"], "content": m["content"]})
+
+        payload = {
+            "model": self.groq_model,
+            "messages": messages,
+            "max_tokens": 120,
+            "temperature": 0.2,
+        }
+
+        try:
+            async with httpx.AsyncClient(timeout=8.0) as client:
+                r = await client.post(
+                    "https://api.groq.com/openai/v1/chat/completions",
+                    headers=headers,
+                    json=payload,
+                )
+                if r.status_code == 200:
+                    assistant_text = r.json()["choices"][0]["message"]["content"].strip()
+                else:
+                    logger.error(f"Groq API error {r.status_code}: {r.text}")
+                    assistant_text = "I have noted your symptoms. Let me connect you with our clinical care team."
+        except Exception as e:
+            logger.error(f"Groq request failed: {e}")
+            assistant_text = "I have noted your symptoms. Let me connect you with our clinical care team."
+
+        node_name = "EMERGENCY_ESCALATION" if is_emergency else "TRIAGE_SYMPTOMS"
+        state["current_node"] = node_name
+        state["is_emergency"] = is_emergency
+        state["symptoms"] = (state.get("symptoms", "") + " " + user_msg).strip()
+        state["messages"].append({"role": "assistant", "content": assistant_text})
+        return state
+
     async def stream_tokens(self, text: str):
         """Streams text word-by-word with realistic token arrival cadence."""
         import asyncio
         words = text.split(" ")
         for i, word in enumerate(words):
             yield word + (" " if i < len(words) - 1 else "")
-            await asyncio.sleep(0.04) # 40ms token arrival pace
+            await asyncio.sleep(0.03)
+
+    async def stream_groq(self, messages: list):
+        """Streams raw token chunks in real-time straight from Groq SSE."""
+        import httpx
+        import json
+        if not self.groq_api_key:
+            return
+
+        headers = {
+            "Authorization": f"Bearer {self.groq_api_key}",
+            "Content-Type": "application/json",
+        }
+        payload = {
+            "model": self.groq_model,
+            "messages": messages,
+            "stream": True,
+            "max_tokens": 150,
+            "temperature": 0.2,
+        }
+
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            async with client.stream(
+                "POST", "https://api.groq.com/openai/v1/chat/completions",
+                headers=headers, json=payload,
+            ) as response:
+                async for line in response.aiter_lines():
+                    if not line or not line.startswith("data: "):
+                        continue
+                    data_str = line[6:].strip()
+                    if data_str == "[DONE]":
+                        break
+                    try:
+                        chunk = json.loads(data_str)
+                        delta = chunk["choices"][0]["delta"].get("content", "")
+                        if delta:
+                            yield delta
+                    except Exception:
+                        continue

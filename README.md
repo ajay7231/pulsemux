@@ -132,3 +132,93 @@ To inspect memory allocation and verify flat memory footprint under sustained lo
 ```bash
 go tool pprof http://localhost:8080/debug/pprof/heap
 ```
+
+---
+
+## Groq Real-World Voice AI Benchmark & Testing
+
+PulseMux is natively integrated with Groq's LPU inference engine for sub-200ms conversational turn latency:
+- **Speech-to-Text:** Groq Whisper (`whisper-large-v3-turbo`) transcribes speech turns in ~250ms.
+- **Clinical Intelligence:** Groq LLM (`qwen/qwen3.8-27b`) streams triage decisions and emergency evaluations with **<180ms TTFT** (Time To First Token).
+- **Clause Splitting:** Real-time syntactic clause punctuation segmentation for continuous streaming TTS audio.
+
+To run the automated clinical scenarios benchmark:
+```bash
+make test-groq
+```
+
+To launch the live interactive voice triage session:
+```bash
+make interactive-groq
+```
+
+---
+
+## 🎙️ Real-Time Browser Clinical Voice Studio
+
+Test live spoken conversation directly inside your browser:
+- **ASR:** Deepgram Nova-3 (or Groq Whisper Turbo)
+- **Clinical AI:** Groq LPU (`qwen/qwen3.8-27b`)
+- **TTS:** Local Kokoro-82M ONNX model (high-fidelity 82M open-weight synthesis)
+- **Features:** Start/end call, continuous microphone capture, automatic pause detection, hands-free interruption, mute, live transcripts, noise suppression, and latency telemetry.
+
+To start the studio server:
+```bash
+make studio
+# Or:
+make ui
+```
+Open **[http://localhost:8000](http://localhost:8000)** in your browser, click **Start call**, allow microphone access, and speak naturally. The assistant greets you and listens continuously until you end the call.
+
+
+
+The simulator needs no Twilio account or number. It sends Twilio-style `connected`,
+`start`, `media`, and `stop` envelopes over `/ws/voice`: mono 8kHz G.711 μ-law,
+160 bytes per 20ms frame. The local simulator also sends `speech_start` and
+`speech_end` control events; it is not a public Twilio webhook and does not exercise
+PSTN routing, carrier latency, or the Go gateway. The existing Go `/ws/twilio`
+endpoint remains separate.
+
+Audio capture uses AudioWorklet, browser echo cancellation, optional browser noise
+suppression, a telephone bandwidth filter, and an adaptive energy gate. Keep quiet
+for the first half-second to calibrate. Six voiced frames (120ms) trigger speech;
+a pause of 800ms submits the utterance; continuous speech is split at 20 seconds.
+A 300ms pre-roll preserves the beginning of each utterance. Short clicks and steady
+room noise are rejected, but energy detection is not a neural speech classifier:
+TV voices and loud changing noise can still trigger it. Headphones improve echo
+handling. Browser noise suppression support is reported in the UI.
+
+ASR runs on each automatically completed utterance using the selected Deepgram or
+Groq provider (Groq is also the fallback if Deepgram fails). Audio frames stream
+continuously, but transcription is utterance-based rather than streaming partial
+ASR. Provider/network latency still applies; no sub-500ms guarantee is implied.
+Configure `DEEPGRAM_API_KEY` and/or `GROQ_API_KEY` in `.env`. Groq is required for
+AI-generated answers. Without it, the existing canned responses are used. Local
+Kokoro model files are optional: if absent, the simulator reports that it is using
+the browser voice. Use localhost or HTTPS for microphone access.
+
+Run simulator regression checks with:
+```bash
+worker-py/.venv/bin/python -m unittest discover -s worker-py/tests
+node --test worker-py/tests/call.test.cjs
+```
+
+### Deepgram TTS voices in the simulator
+
+Before starting a call, open **TTS voice** and choose a voice in the
+**Deepgram · Aura-2** group: Thalia, Andromeda, Helena, Apollo, Arcas, Aries,
+Pandora, or Draco. Kokoro voices remain available in the local group.
+The chosen voice is used for the greeting, replies, and goodbye. TTS selection
+is independent of ASR selection and is locked during a call.
+
+Deepgram TTS uses the server-side `DEEPGRAM_API_KEY` already used by ASR; the key
+must have access to the Speak API and API usage is billed by Deepgram. No SDK or
+additional dependency is needed. Each clause is synthesized through
+`POST /v1/speak` as 24kHz linear16 WAV, then played through the existing telephone
+bandwidth filter. Interruptions cancel outstanding requests and discard queued
+audio. On a missing key or API failure, the UI reports a fallback to local
+Kokoro/Bella, or the browser voice if Kokoro is unavailable, for the rest of that
+call. A new call retries Deepgram.
+
+Voice catalog: https://developers.deepgram.com/docs/tts-models
+API format: https://developers.deepgram.com/docs/tts-container

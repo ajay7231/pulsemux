@@ -11,3 +11,12 @@ websockets>=12.0
 pydantic>=2.7.0
 opentelemetry-api>=1.24.0
 opentelemetry-sdk>=1.24.0
+python-dotenv>=1.0.0
+onnxruntime>=1.19.0
+kokoro-onnx>=0.4.0
+soundfile>=0.12.0
+
+# Browser call simulator
+fastapi>=0.115.0
+uvicorn[standard]>=0.30.0
+numpy>=1.24.0
