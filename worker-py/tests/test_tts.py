@@ -34,7 +34,7 @@ class DeepgramTTSTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_selected_voice_used_for_greeting_reply_and_goodbye(self):
         session = self.session()
-        audio = mulaw_wav(b'\xff' * 160)
+        audio = b'\x01\x00' * 480
         requests = []
 
         def respond(request):
@@ -42,7 +42,7 @@ class DeepgramTTSTests(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(request.url.path, '/v1/speak')
             self.assertEqual(request.url.params['model'], session.voice_id)
             self.assertEqual(request.url.params['encoding'], 'linear16')
-            self.assertEqual(request.url.params['container'], 'wav')
+            self.assertEqual(request.url.params['container'], 'none')
             self.assertEqual(request.url.params['sample_rate'], '24000')
             self.assertEqual(request.headers['authorization'], 'Token test-only-key')
             return httpx.Response(200, content=audio)
@@ -54,8 +54,9 @@ class DeepgramTTSTests(unittest.IsolatedAsyncioTestCase):
             await session.handle_user_speech('Hello', 'reply')
             await session.handle_user_speech('End the call please', 'goodbye')
             kokoro.assert_not_called()
+            await session.close_recognition()
         self.assertEqual(len(requests), 3)
-        clauses = [m for m in session.ws.messages if m['type'] == 'audio_clause']
+        clauses = [m for m in session.ws.messages if m['type'] == 'audio_chunk']
         self.assertEqual([m['turn_id'] for m in clauses], ['greeting', 'reply', 'goodbye'])
         self.assertTrue(all(base64.b64decode(m['audio_b64']) == audio for m in clauses))
         self.assertTrue(session.ws.messages[-1]['end_call'])
@@ -116,3 +117,41 @@ class DeepgramTTSTests(unittest.IsolatedAsyncioTestCase):
                 ws.send_json({'event': 'start', 'turn_id': 'greeting', 'agent_id':agent['id'], 'draft':True})
                 self.assertEqual(ws.receive_json()['type'], 'call_started')
                 self.assertEqual(ws.receive_json(), {'type': 'test_config', 'provider': 'deepgram', 'voice': 'aura-2-helena-en'})
+
+    def test_browser_streaming_requires_explicit_pcm_capability(self):
+        async def greet(session, turn_id):
+            await session.send_json({'type':'test_audio_format','streaming':session.stream_audio})
+        with patch.object(VoiceSession, 'greet', greet), platform_client() as client:
+            agent=create_agent(client,stt_engine='groq')
+            for advertised, expected in [(None,False),('pcm_s16le_24000',True),('unknown',False)]:
+                with client.websocket_connect('/ws/voice') as ws:
+                    ws.receive_json()
+                    start={'event':'start','turn_id':'greeting','agent_id':agent['id'],'draft':True}
+                    if advertised is not None:
+                        start['audio_format']=advertised
+                    ws.send_json(start)
+                    started=ws.receive_json()
+                    self.assertEqual(started['audio_format'],'pcm_s16le_24000' if expected else 'wav')
+                    self.assertEqual(ws.receive_json(),{'type':'test_audio_format','streaming':expected})
+
+    def test_old_browser_receives_wav_and_pcm_browser_receives_streamed_audio(self):
+        def respond(request):
+            body = b'\x01\x00' * 480 if request.url.params['container']=='none' else mulaw_wav(b'\xff'*160)
+            return httpx.Response(200,content=body)
+        with platform_client() as client, patch('app.web_server.httpx.AsyncClient', side_effect=lambda **kw: RealAsyncClient(transport=httpx.MockTransport(respond), **kw)):
+            agent=create_agent(client,tts_engine='deepgram',voice_id='aura-2-apollo-en',stt_engine='groq')
+            for streaming in (False,True):
+                with client.websocket_connect('/ws/voice') as ws:
+                    ws.receive_json()
+                    start={'event':'start','turn_id':'greeting','agent_id':agent['id'],'draft':True}
+                    if streaming:
+                        start['audio_format']='pcm_s16le_24000'
+                    ws.send_json(start)
+                    events=[]
+                    while True:
+                        event=ws.receive_json(); events.append(event)
+                        if event['type']=='turn_complete':break
+                    kinds=[event['type'] for event in events]
+                    self.assertIn('audio_chunk' if streaming else 'audio_clause',kinds)
+                    self.assertNotIn('audio_clause' if streaming else 'audio_chunk',kinds)
+                    self.assertLess(kinds.index('text_complete'),kinds.index('audio_chunk' if streaming else 'audio_clause'))

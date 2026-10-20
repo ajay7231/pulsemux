@@ -52,6 +52,7 @@ let hangupTimer = null;
 let callAcknowledged = false;
 let detector = new TurnDetector(), sequence = 0, streamSid = null, callSid = null;
 let startedAt = 0, timer = null, playbackEpoch = 0, playbackChain = Promise.resolve();
+let playbackNode = null, playbackFilter = null, pcmPlaying = false, pcmDrain = null, resolvePcm = null;
 let sources = new Set(), assistantMessage = null, responseText = '', receivedAudio = false;
 let fallbackSpeech = false, generating = false, frames = 0, ttsWarning = '';
 let semanticTurns = false, pendingSpeech = false;
@@ -68,12 +69,20 @@ function recordPlayback(row, provider) {
   const speech = $('hud-speech-playback'), commit = $('hud-commit-playback');
   if (speech && row.speech_end_at !== undefined) speech.textContent = `${Math.round(row.playback_at - row.speech_end_at)} ms`;
   if (commit && row.commit_notice_at !== undefined) commit.textContent = `${Math.round(row.playback_at - row.commit_notice_at)} ms`;
+  updateVoiceGap(row);
+}
+function updateVoiceGap(row) {
+  const hud = $('hud-text-playback');
+  if (!hud || row?.playback_at === undefined || row.text_complete_at === undefined) return;
+  const gap = row.playback_at - row.text_complete_at;
+  hud.textContent = gap < 0 ? 'Already playing' : `${Math.round(gap)} ms`;
 }
 function getMeasurements() {
   return {schema_version: 1, clock: 'browser monotonic',
-    definitions: {speech_end_to_playback_ms: 'Last locally voiced frame to AudioBufferSource.start or browser speech onstart; includes VAD wait and decode.',
+    definitions: {speech_end_to_playback_ms: 'Last locally voiced frame to AudioBufferSource.start, PCM worklet started notice or browser speech onstart; includes VAD wait and playback buffering.',
       commit_notice_to_playback_ms: 'Commit reference to local playback start; see per-row commit_origin. Server notices exclude notification transit time.',
-      speech_end_to_first_text_ms: 'Last locally voiced frame to first response content received.'},
+      speech_end_to_first_text_ms: 'Last locally voiced frame to first response content received.',
+      text_complete_to_playback_ms: 'Browser text-complete notice to playback API start; negative means playback overlapped text generation.'},
     limitations: ['Playback API start is not a measurement of acoustic speaker output or carrier delivery.',
       'No microphone audio, transcript, patient data, provider keys or agent configuration is exported.',
       'Continue/interrupted/empty/error turns are retained; missing measurements remain null.'],
@@ -83,8 +92,10 @@ function getMeasurements() {
       return {turn_id: row.turn_id, kind: row.kind, outcome: row.outcome,
         commit_origin: row.commit_origin || null,
         playback_provider: row.playback_provider || null,
+        playback_underruns: row.playback_underruns || 0,
         speech_end_to_commit_notice_ms: elapsed('commit_notice_at', 'speech_end_at'),
         speech_end_to_first_text_ms: elapsed('text_at', 'speech_end_at'),
+        text_complete_to_playback_ms: elapsed('playback_at', 'text_complete_at'),
         speech_end_to_playback_ms: elapsed('playback_at', 'speech_end_at'),
         commit_notice_to_playback_ms: elapsed('playback_at', 'commit_notice_at')};
     })};
@@ -108,7 +119,7 @@ function showInterim(text = '') {
   preview.hidden = !text;
 }
 function renderState() {
-  const speaking = sources.size > 0 || globalThis.speechSynthesis?.speaking;
+  const speaking = pcmPlaying || sources.size > 0 || globalThis.speechSynthesis?.speaking;
   $('orb-core').className = 'orb' + (speaking ? ' orb-state-speaking' : calling && detector.speaking ? ' orb-state-listening' : '');
   if (starting && !calling) {
     status(connectionStage === 'microphone' ? 'Checking microphone…' : reconnectAvailable ? 'Reconnecting…' : 'Connecting…',
@@ -128,6 +139,8 @@ function renderState() {
 }
 function stopPlayback() {
   playbackEpoch++;
+  playbackNode?.port.postMessage({type: 'reset', epoch: playbackEpoch});
+  resolvePcm?.(); resolvePcm = null; pcmDrain = null; pcmPlaying = false;
   for (const source of sources) { try { source.stop(); } catch {} }
   sources.clear(); globalThis.speechSynthesis?.cancel();
   playbackChain = Promise.resolve();
@@ -154,6 +167,7 @@ function appendMessage(speaker, text) {
   return body;
 }
 function queueAudio(base64) {
+  recordBoundary('audio_received_at');
   receivedAudio = true;
   const row = measurement;
   const epoch = playbackEpoch;
@@ -173,6 +187,41 @@ function queueAudio(base64) {
     });
   }).catch(() => { notice('Audio playback failed. The response is available in the transcript.'); });
 }
+function queuePcm(base64, encoding, sampleRate) {
+  if (!calling) return;
+  if (encoding !== 'linear16' || sampleRate !== 24000) throw new Error('Unsupported stream format');
+  const bytes = Uint8Array.from(atob(base64), c => c.charCodeAt(0));
+  if (!bytes.length || bytes.length % 2 || bytes.length > 960) throw new Error('Invalid PCM frame');
+  if (!playbackNode) throw new Error('Audio player is unavailable');
+  const samples = new Float32Array(bytes.length / 2), view = new DataView(bytes.buffer);
+  for (let i = 0; i < samples.length; i++) samples[i] = view.getInt16(i * 2, true) / 32768;
+  if (!pcmDrain) {
+    pcmDrain = new Promise(resolve => { resolvePcm = resolve; });
+    playbackChain = Promise.all([playbackChain, pcmDrain]).then(() => undefined);
+  }
+  receivedAudio = true;
+  playbackNode.port.postMessage({type: 'audio', epoch: playbackEpoch, samples}, [samples.buffer]);
+}
+function playbackMessage({data}) {
+  if (!calling || data.epoch !== playbackEpoch) return;
+  if (data.type === 'started') {
+    pcmPlaying = true;
+    recordPlayback(measurement, 'selected_tts_stream');
+  } else if (data.type === 'underrun') {
+    pcmPlaying = false;
+    if (measurement) measurement.playback_underruns = (measurement.playback_underruns || 0) + 1;
+  } else if (data.type === 'drained') {
+    pcmPlaying = false;
+    resolvePcm?.(); resolvePcm = null; pcmDrain = null;
+  } else if (data.type === 'error') {
+    endCall(); notice('Voice playback could not keep up. Start a new call to reconnect.');
+  }
+  renderState();
+}
+function finishPcm() {
+  if (pcmDrain) playbackNode?.port.postMessage({type: 'finish', epoch: playbackEpoch});
+}
+
 function markCallEnding() {
   endingCall = true;
   generating = false;
@@ -233,13 +282,29 @@ function handleMessage(msg) {
       if (!assistantMessage) assistantMessage = appendMessage('PulseMux assistant', '');
       responseText += msg.delta; assistantMessage.textContent += msg.delta;
       $('messages-container').scrollTop = $('messages-container').scrollHeight; break;
+    case 'text_complete':
+      recordBoundary('text_complete_at'); updateVoiceGap(measurement); break;
     case 'audio_clause':
       if (msg.tts_ms) $('hud-tts').textContent = `${msg.tts_ms} ms`;
       queueAudio(msg.audio_b64); break;
+    case 'audio_chunk':
+      recordBoundary('audio_received_at');
+      if (msg.tts_first_audio_ms != null && !receivedAudio) {
+        $('hud-tts').textContent = `${msg.tts_first_audio_ms} ms`;
+        $('hud-tts-label').textContent = 'Deepgram first audio';
+      }
+      try { queuePcm(msg.audio_b64, msg.encoding, msg.sample_rate); }
+      catch { endCall(); notice('Audio playback failed. Start a new call to reconnect.'); }
+      break;
+    case 'audio_error':
+      stopPlayback(); fallbackSpeech = false;
+      if (endingCall) endCall();
+      notice(msg.message); break;
     case 'tts_warning': ttsWarning = msg.message; notice(msg.message); $('hud-tts-label').textContent = 'Fallback TTS'; break;
     case 'audio_unavailable': fallbackSpeech = true; break;
     case 'call_ending': markCallEnding(); break;
     case 'turn_complete': {
+      finishPcm();
       if (measurement) measurement.outcome = 'generation_completed';
       let browserPlayback = Promise.resolve();
       generating = false; recognizing = false; assistantMessage = null;
@@ -315,8 +380,18 @@ async function toggleCall() {
     const settings = track.getSettings();
     noiseStatus = settings.noiseSuppression === true ? 'Noise suppression active' : settings.noiseSuppression === false ? 'Noise suppression off · adaptive gate active' : 'Adaptive noise gate active';
     $('noise-status').textContent = noiseStatus;
-    await context.audioWorklet.addModule('/static/mic-worklet.js');
+    await Promise.all([
+      context.audioWorklet.addModule('/static/mic-worklet.js'),
+      context.audioWorklet.addModule('/static/playback-worklet.js')
+    ]);
     if (disposed || attempt !== generation) return;
+    playbackNode = new AudioWorkletNode(context, 'call-playback', {
+      numberOfInputs: 0, numberOfOutputs: 1, outputChannelCount: [1]
+    });
+    playbackFilter = context.createBiquadFilter(); playbackFilter.type = 'lowpass'; playbackFilter.frequency.value = 3400;
+    playbackNode.connect(playbackFilter).connect(context.destination);
+    playbackNode.port.onmessage = playbackMessage;
+    playbackNode.onprocessorerror = () => { endCall(); notice('Voice playback stopped. Start a new call to reconnect.'); };
     connectionStage = 'socket'; renderState();
     await connect();
     if (disposed || attempt !== generation) return;
@@ -326,12 +401,12 @@ async function toggleCall() {
     detector.reset(); beginTurn(); measurement.kind = 'greeting';
     streamSid = 'MZ' + newId().replaceAll('-', ''); callSid = 'CA' + newId().replaceAll('-', '');
     $('messages-container').replaceChildren();
-    for (const id of ['hud-stt', 'hud-ttft', 'hud-tts', 'hud-total', 'hud-speech-playback', 'hud-commit-playback']) if ($(id)) $(id).textContent = '— ms';
+    for (const id of ['hud-stt', 'hud-ttft', 'hud-tts', 'hud-total', 'hud-speech-playback', 'hud-commit-playback', 'hud-text-playback']) if ($(id)) $(id).textContent = '— ms';
     $('triage-badge').className = 'triage-indicator triage-routine';
     $('triage-label').textContent = 'CLINICAL TRIAGE STANDBY';
     updateConfig();
     send({event: 'connected', protocol: 'Call', version: '1.0.0'});
-    send({event: 'start', agent_id: options.agent.id, draft: options.draft !== false, sequenceNumber: String(sequence++), streamSid,
+    send({event: 'start', audio_format: 'pcm_s16le_24000', agent_id: options.agent.id, draft: options.draft !== false, sequenceNumber: String(sequence++), streamSid,
       turn_id: turnId, start: {streamSid, callSid, accountSid: 'AC_BROWSER_SIMULATOR', tracks: ['inbound'],
         mediaFormat: {encoding: 'audio/x-mulaw', sampleRate: 8000, channels: 1}}});
     const source = context.createMediaStreamSource(stream);
@@ -394,6 +469,8 @@ function endCall({connectionLost = false} = {}) {
   if (ws) { ws.onclose = null; ws.onmessage = null; ws.onerror = null; ws.onopen = null; ws.close(); ws = null; }
   if (capture) { capture.port.onmessage = null; capture.disconnect(); capture = null; }
   if (stream) { stream.getTracks().forEach(t => t.stop()); stream = null; }
+  if (playbackNode) { playbackNode.port.onmessage = null; playbackNode.disconnect(); playbackNode = null; }
+  if (playbackFilter) { playbackFilter.disconnect(); playbackFilter = null; }
   if (context) { context.close().catch(() => {}); context = null; }
   $('btn-record').classList.remove('recording'); $('btn-record-text').textContent = connectionLost ? 'Reconnect' : 'Start call';
   $('btn-mute').disabled = true; $('user-text-input').disabled = true; $('btn-send').disabled = true;

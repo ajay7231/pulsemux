@@ -12,7 +12,7 @@ class ClauseSplitter:
     boundaries (., ?, !, ;, :) are met and a minimum token count threshold is satisfied.
     """
 
-    PUNCT_SPLIT_REGEX = re.compile(r"([.!?;:,])")
+    PUNCT_SPLIT_REGEX = re.compile(r"[.!?;:,](?=\s|$)")
 
     def __init__(self, min_word_count: int = 6):
         self.min_word_count = min_word_count
@@ -22,15 +22,18 @@ class ClauseSplitter:
         self.buffer += token
         clauses = []
 
-        # Check if punctuation boundary is present
-        parts = self.PUNCT_SPLIT_REGEX.split(self.buffer)
-        if len(parts) > 1:
-            # Reconstruct candidate clause
-            candidate = parts[0] + parts[1]
-            words = candidate.strip().split()
-            if len(words) >= self.min_word_count:
-                clauses.append(candidate.strip())
-                self.buffer = "".join(parts[2:])
+        consumed = 0
+        for boundary in self.PUNCT_SPLIT_REGEX.finditer(self.buffer):
+            # A token ending in "90." may continue as "5 mg". Wait until the
+            # next token disambiguates it instead of splitting a clinical dose.
+            if boundary.group() == "." and boundary.end() == len(self.buffer) and boundary.start() and self.buffer[boundary.start() - 1].isdigit():
+                continue
+            candidate = self.buffer[consumed:boundary.end()].strip()
+            words = candidate.split()
+            if len(words) >= self.min_word_count or (boundary.group() in ".!?" and len(words) >= 2):
+                clauses.append(candidate)
+                consumed = boundary.end()
+        self.buffer = self.buffer[consumed:]
 
         return clauses
 

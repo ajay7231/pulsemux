@@ -1,0 +1,31 @@
+{
+  "mode": "live_synthetic_tts",
+  "voice": "aura-2-thalia-en",
+  "rows": [
+    {
+      "transport": "browser_websocket_output",
+      "encoding": "linear16",
+      "sample_rate": 24000,
+      "frames": 206,
+      "audio_bytes": 197760,
+      "first_chunk_ms": 1077.9,
+      "complete_ms": 4702.9,
+      "client_closed": true
+    },
+    {
+      "transport": "phone_adapter_input",
+      "encoding": "mulaw",
+      "sample_rate": 8000,
+      "frames": 238,
+      "audio_bytes": 38080,
+      "first_chunk_ms": 959.7,
+      "complete_ms": 3069.3,
+      "client_closed": true
+    }
+  ],
+  "limitations": [
+    "Two synthetic provider requests, not a latency benchmark.",
+    "Server-side delivery only; no acoustic or carrier playback measurement.",
+    "The phone sink validates format, not realtime carrier delivery."
+  ]
+}

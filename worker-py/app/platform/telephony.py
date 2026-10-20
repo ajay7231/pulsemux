@@ -374,11 +374,13 @@ def wav_mulaw(encoded):
 
 
 class PhoneTransport:
+    phone_audio = True
+
     def __init__(self, ws, stream_sid, call_id):
         self.ws = ws
         self.stream_sid = stream_sid
         self.call_id = call_id
-        self.queue = asyncio.Queue(maxsize=2000)
+        self.queue = asyncio.Queue(maxsize=50)
         self.epoch = 0
         self.end_marks = {}
         self.session = None
@@ -392,7 +394,14 @@ class PhoneTransport:
     async def send_text(self, value):
         data = json.loads(value)
         kind = data.get("type")
-        if kind == "audio_clause":
+        if kind == "audio_chunk":
+            if data.get("encoding") != "mulaw" or data.get("sample_rate") != 8000:
+                raise ValueError("Unsupported telephone audio format")
+            payload = base64.b64decode(data["audio_b64"], validate=True)
+            if not payload or len(payload) > 160:
+                raise ValueError("Invalid telephone audio frame")
+            await self.queue.put((self.epoch, "media", payload.ljust(160, b"\xff")))
+        elif kind == "audio_clause":
             payload = await asyncio.to_thread(wav_mulaw, data["audio_b64"])
             epoch = self.epoch
             for start in range(0, len(payload), 160):
@@ -404,9 +413,11 @@ class PhoneTransport:
             if data.get("end_call"):
                 self.end_marks[name] = True
             await self.queue.put((self.epoch, "mark", name))
-        elif kind == "audio_unavailable":
+        elif kind in {"audio_unavailable", "audio_error"}:
             # Phone calls cannot use browser speech synthesis. End cleanly and
             # leave a staff task instead of silently continuing a text-only call.
+            if kind == "audio_error":
+                await self.clear()
             with database().Session() as db:
                 call = db.get(Call, self.call_id)
                 db.add(

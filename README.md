@@ -225,12 +225,14 @@ is independent of ASR selection and is locked during a call.
 
 Deepgram TTS uses the server-side `DEEPGRAM_API_KEY` already used by ASR; the key
 must have access to the Speak API and API usage is billed by Deepgram. No SDK or
-additional dependency is needed. Each clause is synthesized through
-`POST /v1/speak` as 24kHz linear16 WAV, then played through the existing telephone
-bandwidth filter. Interruptions cancel outstanding requests and discard queued
-audio. On a missing key or API failure, the UI reports a fallback to local
-Kokoro/Bella, or the browser voice if Kokoro is unavailable, for the rest of that
-call. A new call retries Deepgram.
+additional dependency is needed. LLM text and speech synthesis run concurrently
+through a bounded clause queue. Each `POST /v1/speak` response streams immediately:
+24kHz raw PCM to browser playback, or native 8kHz mu-law to Twilio/Plivo. The HTTP
+connection pool is reused within the call. Interruptions cancel outstanding
+requests and discard queued audio. A failure before audio starts reports a local
+Kokoro/Bella or browser fallback for that call. A failure after audio starts
+reports an interruption without replaying a partially spoken instruction.
+A new call retries Deepgram. See [audio streaming design and checks](docs/AUDIO_STREAMING.md).
 
 Voice catalog: https://developers.deepgram.com/docs/tts-models
 API format: https://developers.deepgram.com/docs/tts-container

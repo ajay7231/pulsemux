@@ -227,6 +227,7 @@ export function AgentTest({
           ["hud-stt", "Speech recognition"],
           ["hud-ttft", "First response"],
           ["hud-tts", "Voice generation"],
+          ["hud-text-playback", "Text ready → voice"],
           ["hud-total", "Turn duration"],
           ["hud-speech-playback", "Speech → playback"],
           ["hud-commit-playback", "Commit notice → playback"],

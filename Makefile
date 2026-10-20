@@ -63,7 +63,7 @@ platform-worker:
 
 platform-test:
 	@$(PYTHON) -B -m unittest discover -s worker-py/tests
-	@node --test worker-py/tests/call.test.cjs
+	@node --test worker-py/tests/call.test.cjs worker-py/tests/playback_worklet.test.cjs
 	@npm --prefix dashboard test
 	@npm --prefix dashboard run build
 

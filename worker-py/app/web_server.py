@@ -35,6 +35,7 @@ from fastapi.staticfiles import StaticFiles
 
 from app.agent.tools import check_red_flag_symptoms, find_available_slots, book_appointment_slot
 from app.pipeline.tts_stream import ClauseSplitter, KokoroEngine
+from app.pipeline.speech_output import DeepgramSpeechOutput, AudioPacer, SpeechStreamError
 from app.pipeline.call_audio import CallAudio
 from app.pipeline.call_control import user_requested_hangup, assistant_said_farewell
 from app.pipeline.recognition_options import deepgram_options
@@ -130,6 +131,9 @@ class VoiceSession:
         self.turn_completion = None
         self.recognition_failed = False
         self.send_lock = asyncio.Lock()
+        self.speech_output = DeepgramSpeechOutput()
+        self.audio_pacer = AudioPacer()
+        self.stream_audio = True
 
     async def start_recognition(self):
         if self.stt_engine != "deepgram" or os.getenv("DEEPGRAM_STREAMING_ENABLED", "1") == "0":
@@ -243,6 +247,7 @@ class VoiceSession:
             await self.recognition_failure()
 
     async def close_recognition(self):
+        await self.speech_output.close()
         if self.turn_completion is not None:
             await self.turn_completion.close()
             self.turn_completion = None
@@ -326,11 +331,53 @@ class VoiceSession:
 
         return None
 
-    async def synthesize_audio(self, clause: str, turn_id=None) -> Optional[str]:
-        """Route every utterance (including greetings/farewells) to its TTS provider.
+    async def speak(self, text, turn_id):
+        """Send audio incrementally; only legacy/local engines produce whole WAVs."""
+        started = time.perf_counter()
+        emitted = False
+        if self.tts_engine == "deepgram" and self.stream_audio and not self.tts_fallback_reason:
+            key = self.provider_key("tts", "DEEPGRAM_API_KEY")
+            reason = "DEEPGRAM_API_KEY is not configured."
+            if key:
+                try:
+                    async for chunk, encoding, rate in self.speech_output.chunks(
+                        text, key, self.voice_id, phone=getattr(self.ws, "phone_audio", False)
+                    ):
+                        if not self.is_active:
+                            return False
+                        if not getattr(self.ws, "phone_audio", False):
+                            await self.audio_pacer.wait(len(chunk), encoding, rate)
+                        await self.send_json({"type": "audio_chunk", "turn_id": turn_id,
+                            "audio_b64": base64.b64encode(chunk).decode("ascii"),
+                            "encoding": encoding, "sample_rate": rate,
+                            "tts_first_audio_ms": round((time.perf_counter() - started) * 1000, 1) if not emitted else None})
+                        emitted = True
+                    return emitted
+                except httpx.HTTPStatusError as exc:
+                    reason = f"Deepgram returned HTTP {exc.response.status_code}."
+                except (httpx.RequestError, ValueError, TimeoutError):
+                    reason = "Deepgram audio stream was interrupted."
+                self.tts_fallback_reason = reason
+                if emitted:
+                    # Never replay a medication instruction after a partial delivery.
+                    await self.send_json({"type": "audio_error", "turn_id": turn_id,
+                        "message": "Voice playback was interrupted. Please ask the assistant to repeat its response."})
+                    raise SpeechStreamError() from None
+            self.tts_fallback_reason = reason
+            await self.send_json({"type": "tts_warning", "turn_id": turn_id,
+                "message": reason + " Using Kokoro or browser voice for this call."})
+        audio = await self.synthesize_audio(text, turn_id)
+        if audio:
+            await self.send_json({"type": "audio_clause", "text": text, "audio_b64": audio,
+                                 "turn_id": turn_id, "tts_ms": round((time.perf_counter() - started) * 1000, 1)})
+            return True
+        return False
 
-        The HTTP request stays on the event loop so interruption cancels it.
-        Keys remain on the server; only encoded WAV audio reaches the browser.
+    async def synthesize_audio(self, clause: str, turn_id=None) -> Optional[str]:
+        """WAV compatibility helper for offline fixtures and local fallback.
+
+        Live calls use speak(), which streams Deepgram audio to the transport.
+        Benchmark fixture generators still require a complete validated WAV.
         """
         if self.tts_engine == "deepgram":
             if not self.tts_fallback_reason:
@@ -394,11 +441,12 @@ class VoiceSession:
         text = getattr(self, "greeting", "Hello, I am your PulseMux clinical assistant. How can I help you today?")
         self.messages.append({"role": "assistant", "content": text})
         await self.send_json({"type": "token", "delta": text, "turn_id": turn_id})
-        audio = await self.synthesize_audio(text, turn_id)
-        if audio:
-            await self.send_json({"type": "audio_clause", "audio_b64": audio, "turn_id": turn_id})
-        else:
-            await self.send_json({"type": "audio_unavailable", "turn_id": turn_id})
+        await self.send_json({"type": "text_complete", "turn_id": turn_id})
+        try:
+            if not await self.speak(text, turn_id):
+                await self.send_json({"type": "audio_unavailable", "turn_id": turn_id})
+        except SpeechStreamError:
+            return
         await self.send_json({"type": "turn_complete", "turn_id": turn_id, "total_turn_ms": 0})
 
     async def say_goodbye(self, turn_id):
@@ -407,11 +455,12 @@ class VoiceSession:
         text = "Thank you for calling. Goodbye."
         self.messages.append({"role": "assistant", "content": text})
         await self.send_json({"type": "token", "delta": text, "turn_id": turn_id})
-        audio = await self.synthesize_audio(text, turn_id)
-        if audio:
-            await self.send_json({"type": "audio_clause", "audio_b64": audio, "turn_id": turn_id})
-        else:
-            await self.send_json({"type": "audio_unavailable", "turn_id": turn_id})
+        await self.send_json({"type": "text_complete", "turn_id": turn_id})
+        try:
+            if not await self.speak(text, turn_id):
+                await self.send_json({"type": "audio_unavailable", "turn_id": turn_id})
+        except SpeechStreamError:
+            return
         await self.send_json({"type": "turn_complete", "turn_id": turn_id,
                               "total_turn_ms": 0, "end_call": True})
 
@@ -455,17 +504,13 @@ class VoiceSession:
                 "Thank you for sharing your symptoms. I can help book a consultation with our medical team."
             )
             await self.send_json({"type": "token", "delta": fallback_msg, "turn_id": turn_id})
+            await self.send_json({"type": "text_complete", "turn_id": turn_id})
             self.messages.append({"role": "assistant", "content": fallback_msg})
-            b64_audio = await self.synthesize_audio(fallback_msg, turn_id)
-            if b64_audio:
-                await self.send_json({
-                    "type": "audio_clause",
-                    "text": fallback_msg,
-                    "audio_b64": b64_audio,
-                    "turn_id": turn_id,
-                })
-            else:
-                await self.send_json({"type": "audio_unavailable", "turn_id": turn_id})
+            try:
+                if not await self.speak(fallback_msg, turn_id):
+                    await self.send_json({"type": "audio_unavailable", "turn_id": turn_id})
+            except SpeechStreamError:
+                return
             await self.send_json({"type": "turn_complete", "turn_id": turn_id,
                                   "total_turn_ms": round((time.time() - t_start) * 1000, 1)})
             return
@@ -509,7 +554,10 @@ class VoiceSession:
         audio_sent = False
         finish_reason = None
 
-        try:
+        clauses = asyncio.Queue(maxsize=4)
+
+        async def read_text():
+            nonlocal first_token_time, finish_reason
             async with httpx.AsyncClient(timeout=10.0) as client:
                 async with client.stream(
                     "POST", getattr(self, "llm_endpoint", "https://api.groq.com/openai/v1/chat/completions"),
@@ -531,62 +579,42 @@ class VoiceSession:
                                 continue
                             finish_reason = choices[0].get("finish_reason") or finish_reason
                             delta = choices[0].get("delta", {}).get("content") or ""
-                            if delta:
-                                if first_token_time is None:
-                                    first_token_time = time.time()
-                                    ttft_ms = (first_token_time - t_start) * 1000
-                                    await self.send_json({
-                                        "type": "telemetry_ttft",
-                                        "ttft_ms": round(ttft_ms, 1),
-                                        "turn_id": turn_id,
-                                    })
-
-                                assistant_full_text.append(delta)
-                                await self.send_json({
-                                    "type": "token",
-                                    "delta": delta,
-                                    "turn_id": turn_id,
-                                })
-
-                                # Real-time clause extraction
-                                new_clauses = clause_splitter.feed_token(delta)
-                                for clause in new_clauses:
-                                    t_tts = time.time()
-                                    b64_audio = await self.synthesize_audio(clause, turn_id)
-                                    tts_ms = (time.time() - t_tts) * 1000
-                                    if b64_audio and self.is_active:
-                                        audio_sent = True
-                                        await self.send_json({
-                                            "type": "audio_clause",
-                                            "text": clause,
-                                            "audio_b64": b64_audio,
-                                            "turn_id": turn_id,
-                                            "tts_ms": round(tts_ms, 1),
-                                        })
                         except (json.JSONDecodeError, KeyError, TypeError):
                             continue
+                        if not delta:
+                            continue
+                        if first_token_time is None:
+                            first_token_time = time.time()
+                            await self.send_json({"type": "telemetry_ttft", "turn_id": turn_id,
+                                "ttft_ms": round((first_token_time - t_start) * 1000, 1)})
+                        assistant_full_text.append(delta)
+                        await self.send_json({"type": "token", "delta": delta, "turn_id": turn_id})
+                        for clause in clause_splitter.feed_token(delta):
+                            await clauses.put(clause)
+            await self.send_json({"type": "text_complete", "turn_id": turn_id})
+            trailing = clause_splitter.flush()
+            if trailing:
+                await clauses.put(trailing)
+            await clauses.put(None)
 
+        async def speak_text():
+            nonlocal audio_sent
+            while (clause := await clauses.get()) is not None:
+                if not self.is_active:
+                    raise ConnectionError("Call closed")
+                audio_sent = await self.speak(clause, turn_id) or audio_sent
+
+        try:
+            # Failure/cancellation in either stage cancels and awaits its sibling.
+            # Backpressure bounds pending clauses instead of spawning per-token jobs.
+            async with asyncio.TaskGroup() as tasks:
+                tasks.create_task(read_text())
+                tasks.create_task(speak_text())
             if not "".join(assistant_full_text).strip():
                 logger.warning("voice_empty_completion finish_reason=%s", finish_reason)
                 await self.send_json({"type": "error", "turn_id": turn_id,
                                       "message": "The model returned no answer. Please try again or choose another model in the agent settings."})
                 return
-
-            # Flush remaining clause words
-            trailing = clause_splitter.flush()
-            if trailing and self.is_active:
-                t_tts = time.time()
-                b64_audio = await self.synthesize_audio(trailing, turn_id)
-                tts_ms = (time.time() - t_tts) * 1000
-                if b64_audio:
-                    audio_sent = True
-                    await self.send_json({
-                        "type": "audio_clause",
-                        "text": trailing,
-                        "audio_b64": b64_audio,
-                        "turn_id": turn_id,
-                        "tts_ms": round(tts_ms, 1),
-                    })
 
             if not audio_sent:
                 await self.send_json({"type": "audio_unavailable", "turn_id": turn_id})
@@ -605,6 +633,10 @@ class VoiceSession:
 
         except Exception as e:
             logger.error("voice_turn_failure")
+            partial_failure = isinstance(e, BaseExceptionGroup) and e.subgroup(SpeechStreamError) is not None
+            if not partial_failure:
+                await self.send_json({"type": "audio_error", "turn_id": turn_id,
+                                      "message": "The response was interrupted. Please try again."})
             await self.send_json({"type": "error", "turn_id": turn_id,
                                   "message": "The assistant could not respond. Please try again."})
 
@@ -618,6 +650,7 @@ async def cancel_turn(session):
         except asyncio.CancelledError:
             pass
     session.active_turn_task = None
+    session.audio_pacer = AudioPacer()
 
 
 async def transcribe_turn(session, audio, mime_type, turn_id):
@@ -727,6 +760,9 @@ async def voice_websocket(ws: WebSocket):
                             db.add(call);db.flush();event(db,call,'started',{'draft':version is None});db.commit()
                             call_id=call.id
                         session=session_class()(ws,call_id)
+                        # Open tabs may still run the pre-PCM player after an
+                        # upgrade. Stream only when the client advertises it.
+                        session.stream_audio = msg.get("audio_format") == "pcm_s16le_24000"
                         await session.start_recognition()
                     except Exception as exc:
                         await session.close_recognition()
@@ -742,6 +778,7 @@ async def voice_websocket(ws: WebSocket):
                     call_started = True
                     started_at = time.monotonic()
                     await session.send_json({"type": "call_started", "call_id":session.call_id, "settings":session.config, "agent_name":agent.name,
+                                             "audio_format": "pcm_s16le_24000" if session.stream_audio else "wav",
                                              "turn_detection": {"semantic": bool(session.turn_completion),
                                                  "candidate_pause_ms": session.turn_completion.timing.complete_ms if session.turn_completion else session.config["end_pause_ms"]}})
                     session.active_turn_task = asyncio.create_task(session.greet(msg.get("turn_id")))

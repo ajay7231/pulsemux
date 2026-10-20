@@ -199,3 +199,84 @@ test('mute also flushes a paused semantic turn without sending microphone media'
   assert.equal(f.sent[0].force, true);
   assert.equal(f.sent[0].pause_ms, 0);
 });
+
+function pcmFixture() {
+  const f = callFixture();
+  const messages = [];
+  f.scope.pcmNode = {port:{postMessage: data => messages.push(data)}, disconnect() {f.stopped.push('player');}};
+  vm.runInContext('playbackNode = pcmNode;', f.scope);
+  f.scope.frame = Buffer.alloc(960).toString('base64');
+  f.pcmMessages = messages;
+  f.playbackEvent = type => vm.runInContext(`playbackMessage({data:{type:'${type}',epoch:playbackEpoch}})`,f.scope);
+  return f;
+}
+test('PCM is queued to one continuous player and farewell waits for its drain', async () => {
+  const f = pcmFixture();
+  f.scope.audioContext.decodeAudioData = () => {throw new Error('Must not decode raw PCM as WAV');};
+  vm.runInContext("queuePcm(frame,'linear16',24000); queuePcm(frame,'linear16',24000);", f.scope);
+  assert.equal(f.audioSources.length, 0);
+  assert.equal(f.pcmMessages.filter(m=>m.type==='audio').length, 2);
+  assert.equal(f.pcmMessages[0].samples.length,480);
+  f.playbackEvent('started');
+  assert.equal(vm.runInContext('pcmPlaying',f.scope),true);
+  vm.runInContext("handleMessage({type:'turn_complete',turn_id:'farewell',end_call:true})",f.scope);
+  await tick();
+  assert.equal(f.pcmMessages.at(-1).type,'finish');
+  assert.equal(vm.runInContext('calling',f.scope),true);
+  f.playbackEvent('drained'); await tick();
+  assert.equal(vm.runInContext('calling',f.scope),false);
+});
+test('interrupt clears the continuous player and rejects stale playback events and audio', () => {
+  const f = pcmFixture();
+  vm.runInContext("queuePcm(frame,'linear16',24000); stopPlayback(); turnId='new'; handleMessage({type:'audio_chunk',turn_id:'farewell',audio_b64:'invalid',encoding:'linear16',sample_rate:24000}); playbackMessage({data:{type:'started',epoch:playbackEpoch-1}})",f.scope);
+  assert.equal(f.pcmMessages.at(-1).type,'reset');
+  assert.equal(f.pcmMessages.filter(m=>m.type==='audio').length,1);
+  assert.equal(vm.runInContext('pcmPlaying',f.scope),false);
+  assert.equal(vm.runInContext('pcmDrain',f.scope),null);
+});
+test('stream audio failure clears the player without replaying the complete text', () => {
+  const f=pcmFixture();
+  vm.runInContext("queuePcm(frame,'linear16',24000); handleMessage({type:'audio_error',turn_id:'farewell',message:'Please repeat'});",f.scope);
+  assert.equal(f.pcmMessages.at(-1).type,'reset');
+  assert.equal(f.utterances.length,0);
+  assert.equal(f.elements.get('call-notice').textContent,'Please repeat');
+});
+test('unsupported formats and a worklet overflow fail visibly', () => {
+  const f=pcmFixture();
+  vm.runInContext("handleMessage({type:'audio_chunk',turn_id:'farewell',audio_b64:'AAAA',encoding:'mulaw',sample_rate:8000});",f.scope);
+  assert.equal(vm.runInContext('calling',f.scope),false);
+  assert.match(f.elements.get('call-notice').textContent,/Audio playback failed/);
+  const g=pcmFixture(); g.playbackEvent('error');
+  assert.equal(vm.runInContext('calling',g.scope),false);
+  assert.match(g.elements.get('call-notice').textContent,/could not keep up/);
+});
+test('a failed streaming farewell ends the call and releases microphone and player', () => {
+  const f=pcmFixture();
+  vm.runInContext("queuePcm(frame,'linear16',24000); handleMessage({type:'call_ending',turn_id:'farewell'}); handleMessage({type:'audio_error',turn_id:'farewell',message:'Playback interrupted'});",f.scope);
+  assert.equal(vm.runInContext('calling',f.scope),false);
+  assert.deepEqual(f.stopped.sort(),['context','microphone','player','socket']);
+});
+test('text-ready to actual render notice measures the voice gap without later-clause overwrites', () => {
+  const f=pcmFixture(); f.scope.performance={now:()=>100};
+  vm.runInContext("measurement={turn_id:'farewell',kind:'speech'}; measurements=[measurement]; handleMessage({type:'text_complete',turn_id:'farewell'});",f.scope);
+  f.scope.performance={now:()=>400};
+  vm.runInContext("handleMessage({type:'audio_chunk',turn_id:'farewell',audio_b64:frame,encoding:'linear16',sample_rate:24000,tts_first_audio_ms:340}); handleMessage({type:'audio_chunk',turn_id:'farewell',audio_b64:frame,encoding:'linear16',sample_rate:24000,tts_first_audio_ms:10});",f.scope);
+  assert.equal(f.elements.get('hud-tts').textContent,'340 ms');
+  f.scope.performance={now:()=>480}; f.playbackEvent('started');
+  assert.equal(f.elements.get('hud-text-playback').textContent,'380 ms');
+  const report=JSON.parse(vm.runInContext('JSON.stringify(getMeasurements())',f.scope));
+  assert.equal(report.rows[0].text_complete_to_playback_ms,380);
+  f.playbackEvent('underrun');
+  assert.equal(vm.runInContext('measurement.playback_underruns',f.scope),1);
+  vm.runInContext('stopPlayback()',f.scope);
+});
+test('text-ready metric identifies playback overlapping text generation', () => {
+  const f=pcmFixture(); f.scope.performance={now:()=>100};
+  vm.runInContext("measurement={turn_id:'farewell'}; measurements=[measurement]; queuePcm(frame,'linear16',24000);",f.scope);
+  f.playbackEvent('started'); f.scope.performance={now:()=>200};
+  vm.runInContext("handleMessage({type:'text_complete',turn_id:'farewell'});",f.scope);
+  assert.equal(f.elements.get('hud-text-playback').textContent,'Already playing');
+  const report=JSON.parse(vm.runInContext('JSON.stringify(getMeasurements())',f.scope));
+  assert.equal(report.rows[0].text_complete_to_playback_ms,-100);
+  vm.runInContext('stopPlayback()',f.scope);
+});

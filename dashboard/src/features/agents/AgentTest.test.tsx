@@ -45,10 +45,10 @@ function audioFixture() {
   vi.stubGlobal(
     "AudioWorkletNode",
     class {
-      port = { onmessage: null };
+      port = { onmessage: null, postMessage: vi.fn() };
       connect = vi.fn().mockReturnThis();
       disconnect = vi.fn();
-      constructor() { worklets.push(this); }
+      constructor(_context: unknown, public name: string) { worklets.push(this); }
     },
   );
   const sent: any[] = [];
@@ -167,7 +167,7 @@ test("server acknowledgement gates media and mute blocks real worklet frames", a
   const person = userEvent.setup();
   render(<AgentTest agent={agent} voice="Bella" onClose={() => {}} />);
   await person.click(screen.getByRole("button", { name: /Start call/ }));
-  const frame = () => f.worklets[0].port.onmessage({data: new Float32Array(160)});
+  const frame = () => f.worklets.find(w => w.name === "call-microphone").port.onmessage({data: new Float32Array(160)});
   act(frame);
   expect(f.sent.filter(m => m.event === "media")).toHaveLength(0);
   expect(screen.getByText("CALL CONNECTING")).toBeTruthy();
@@ -191,7 +191,7 @@ test("transcribing and thinking reflect pipeline events and mute clears preview"
   await person.click(screen.getByRole("button", {name: /Start call/}));
   const emit = (value: any) => act(() => f.sockets[0].onmessage({data: JSON.stringify(value)}));
   emit({type: "call_started"});
-  act(() => { for (let i = 0; i < 25; i++) f.worklets[0].port.onmessage({data: new Float32Array(160)}); });
+  act(() => { for (let i = 0; i < 25; i++) f.worklets.find(w => w.name === "call-microphone").port.onmessage({data: new Float32Array(160)}); });
   emit({type: "turn_committed"});
   expect(screen.getByRole("heading", {name: "Transcribing…"})).toBeTruthy();
   emit({type: "transcript", text: "Hello."});

@@ -179,13 +179,13 @@ def session_class():
                 db.commit()
             self.messages.append({"role": "assistant", "content": text})
             await self.send_json({"type": "token", "delta": text, "turn_id": turn})
-            audio = await self.synthesize_audio(text, turn)
-            if audio:
-                await self.send_json(
-                    {"type": "audio_clause", "audio_b64": audio, "turn_id": turn}
-                )
-            else:
-                await self.send_json({"type": "audio_unavailable", "turn_id": turn})
+            await self.send_json({"type": "text_complete", "turn_id": turn})
+            from app.pipeline.speech_output import SpeechStreamError
+            try:
+                if not await self.speak(text, turn):
+                    await self.send_json({"type": "audio_unavailable", "turn_id": turn})
+            except SpeechStreamError:
+                return
             self.transfer_requested = transfer
             self.ending_call = optout or transfer
             await self.send_json(

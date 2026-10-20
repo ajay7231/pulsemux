@@ -1,0 +1,38 @@
+{
+  "mode": "synthetic_llm_to_tts_server",
+  "voice": "aura-2-apollo-en",
+  "rows": [
+    {
+      "sample": 0,
+      "connection": "cold",
+      "first_text_ms": 302.1,
+      "first_audio_ms": 1196.7,
+      "text_complete_ms": 321.1,
+      "text_complete_to_first_audio_ms": 875.6,
+      "text_to_first_audio_ms": 894.6
+    },
+    {
+      "sample": 1,
+      "connection": "reused",
+      "first_text_ms": 193.2,
+      "first_audio_ms": 552.1,
+      "text_complete_ms": 213.6,
+      "text_complete_to_first_audio_ms": 338.5,
+      "text_to_first_audio_ms": 359.0
+    },
+    {
+      "sample": 2,
+      "connection": "reused",
+      "first_text_ms": 134.7,
+      "first_audio_ms": 464.2,
+      "text_complete_ms": 220.4,
+      "text_complete_to_first_audio_ms": 243.8,
+      "text_to_first_audio_ms": 329.5
+    }
+  ],
+  "limitations": [
+    "Three sequential synthetic requests, not an SLA benchmark.",
+    "No browser or acoustic output.",
+    "No RAG or recognition in this check."
+  ]
+}
