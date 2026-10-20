@@ -5,6 +5,7 @@ import {
   type CallController,
 } from "../../../../worker-py/web/call.js";
 import "./test-call.css";
+import { PlivoLocalTest } from "./PlivoLocalTest";
 
 type Agent = {
   id: string;
@@ -50,7 +51,10 @@ export function AgentTest({
           <h1>{agent.name}</h1>
           <p>Test conversation</p>
         </div>
-        <span className="test-draft">Draft · revision {agent.revision}</span>
+        <div className="actions">
+          <PlivoLocalTest agentId={agent.id} />
+          <span className="test-draft">Draft · revision {agent.revision}</span>
+        </div>
       </div>
       <div className="test-context">
         <ShieldCheck size={17} />

@@ -1,0 +1,18 @@
+{
+  "schema_version": 1,
+  "fixture_hashes_match_historical": true,
+  "fixture_count": 16,
+  "scenario_manifest_unchanged": true,
+  "normalization_sha256": "f136a077e3c941f0cc192028da81bb2cac5b456680b9028ef1eaab6083d8a5cf",
+  "automated_gates_pass": true,
+  "streaming_review_trials": 14,
+  "streaming_trials": 32,
+  "historical_streaming_wer": 0.0857,
+  "new_http_wer": 0.0143,
+  "new_streaming_wer": 0.0143,
+  "limitations": [
+    "Tuned and evaluated on the same synthetic corpus; a held-out human/noise corpus is still required.",
+    "Current paired paths share the same model; historical end-to-end latency used a different LLM.",
+    "Server WAV timings exclude caller playback and carrier delivery."
+  ]
+}

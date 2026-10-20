@@ -340,3 +340,10 @@
 .test-context svg {
   flex-shrink: 0;
 }
+
+.agent-test .page-heading > .actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-3, 12px);
+}

@@ -125,6 +125,27 @@ export function VoiceConfiguration({
           "ASR connection",
         )}
       </div>
+      {config.stt_engine === "deepgram" && (
+        <Field
+          label="Clinical vocabulary"
+          hint="Optional: up to 25 medication or clinical terms, one per line. Use approved protocol vocabulary; avoid patient identifiers."
+        >
+          <textarea
+            rows={4}
+            maxLength={2000}
+            defaultValue={config.stt_keyterms.join("\n")}
+            onChange={(e) =>
+              cf(
+                "stt_keyterms",
+                e.target.value
+                  .split("\n")
+                  .map((term) => term.trim())
+                  .filter(Boolean),
+              )
+            }
+          />
+        </Field>
+      )}
       <hr />
       <h3>Generating a response</h3>
       {connectionSelect(

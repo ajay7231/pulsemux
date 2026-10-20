@@ -1,0 +1,4 @@
+{
+  "source": "Medication names from the user-supplied CARD-PCI-2026-V4 protocol, section 1.1; includes the whole medication table, not just failed test terms.",
+  "terms": ["ticagrelor", "Brilinta", "aspirin", "Ecosprin", "metoprolol succinate", "Betaloc XR", "atorvastatin", "Lipitor", "nitroglycerin", "Sorbitrate"]
+}

@@ -1928,6 +1928,220 @@
           }
         }
       }
+    },
+    "/api/plivo/{connection_id}/inbound": {
+      "post": {
+        "summary": "Inbound",
+        "operationId": "inbound_api_plivo__connection_id__inbound_post",
+        "parameters": [
+          {
+            "name": "connection_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Connection Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/plivo/{connection_id}/answer/{call_id}": {
+      "post": {
+        "summary": "Answer",
+        "operationId": "answer_api_plivo__connection_id__answer__call_id__post",
+        "parameters": [
+          {
+            "name": "connection_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Connection Id"
+            }
+          },
+          {
+            "name": "call_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Call Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/plivo/{connection_id}/status/{call_id}": {
+      "post": {
+        "summary": "Status",
+        "operationId": "status_api_plivo__connection_id__status__call_id__post",
+        "parameters": [
+          {
+            "name": "connection_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Connection Id"
+            }
+          },
+          {
+            "name": "call_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Call Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/plivo/{connection_id}/transfer/{call_id}": {
+      "post": {
+        "summary": "Transfer Xml",
+        "operationId": "transfer_xml_api_plivo__connection_id__transfer__call_id__post",
+        "parameters": [
+          {
+            "name": "connection_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Connection Id"
+            }
+          },
+          {
+            "name": "call_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Call Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/agents/{agent_id}/plivo-test": {
+      "post": {
+        "summary": "Local Test",
+        "operationId": "local_test_api_agents__agent_id__plivo_test_post",
+        "parameters": [
+          {
+            "name": "agent_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Agent Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LocalTestPublic"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -2011,6 +2225,14 @@
             ],
             "title": "Stt Engine",
             "default": "deepgram"
+          },
+          "stt_keyterms": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "maxItems": 25,
+            "title": "Stt Keyterms"
           },
           "stt_connection_id": {
             "anyOf": [
@@ -2710,7 +2932,8 @@
               "deepgram",
               "groq",
               "openai",
-              "twilio"
+              "twilio",
+              "plivo"
             ],
             "title": "Provider"
           },
@@ -2755,7 +2978,8 @@
               "deepgram",
               "groq",
               "openai",
-              "twilio"
+              "twilio",
+              "plivo"
             ],
             "title": "Provider"
           },
@@ -3032,6 +3256,29 @@
         },
         "type": "object",
         "title": "HTTPValidationError"
+      },
+      "LocalTestPublic": {
+        "properties": {
+          "call_id": {
+            "type": "string",
+            "title": "Call Id"
+          },
+          "command": {
+            "type": "string",
+            "title": "Command"
+          },
+          "expires_at": {
+            "type": "number",
+            "title": "Expires At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "call_id",
+          "command",
+          "expires_at"
+        ],
+        "title": "LocalTestPublic"
       },
       "Login": {
         "properties": {

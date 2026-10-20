@@ -12,7 +12,7 @@ from urllib.parse import urlsplit
 from xml.etree.ElementTree import Element, SubElement, tostring
 import numpy as np
 import httpx
-from fastapi import APIRouter, WebSocket, Request, HTTPException
+from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Request, HTTPException
 from fastapi.responses import Response
 from sqlalchemy import select, update
 from twilio.request_validator import RequestValidator
@@ -118,7 +118,11 @@ async def place_outbound(
     contact = owned(db, Contact, contact_id, workspace_id)
     if not contact.consent or contact.opted_out:
         raise HTTPException(409, "This contact has not consented or has opted out")
-    credentials = twilio_credentials(db, number.connection_id, workspace_id)
+    connection = owned(db, Connection, number.connection_id, workspace_id)
+    if not connection.active or connection.provider not in {"twilio", "plivo"}:
+        raise HTTPException(409, "Telephone connection is unavailable")
+    credentials = decrypt(connection.encrypted_secret)
+    provider = connection.provider
     token = secrets.token_urlsafe(32)
     config = dict(version.config)
     config["_has_contact"] = True
@@ -145,42 +149,50 @@ async def place_outbound(
         recipient = db.get(Recipient, recipient_id)
         recipient.last_call_id = call.id
     event(db, call, "dispatching", {})
-    # Persist intent before touching Twilio. A timeout is ambiguous and never
+    # Persist intent before contacting a provider. A timeout is ambiguous and never
     # retried automatically: callbacks/reconciliation decide what happened.
     db.commit()
     try:
-        async with httpx.AsyncClient(timeout=15) as client:
-            response = await client.post(
-                f'https://api.twilio.com/2010-04-01/Accounts/{credentials["account_sid"]}/Calls.json',
-                auth=twilio_auth(credentials),
-                data={
-                    "To": contact.phone,
-                    "From": number.number,
-                    "Twiml": stream_twiml(call, token),
-                    "StatusCallback": f"{base}/api/twilio/{number.connection_id}/status/{call.id}",
-                    "StatusCallbackEvent": [
-                        "initiated",
-                        "ringing",
-                        "answered",
-                        "completed",
-                    ],
-                    "Timeout": "30",
-                    "TimeLimit": str(config["max_duration_seconds"]),
-                },
-            )
+        if provider == "plivo":
+            from .plivo import dispatch_call
+            response = await dispatch_call(call, credentials, token, base)
+        else:
+            async with httpx.AsyncClient(timeout=15) as client:
+                response = await client.post(
+                    f'https://api.twilio.com/2010-04-01/Accounts/{credentials["account_sid"]}/Calls.json',
+                    auth=twilio_auth(credentials),
+                    data={
+                        "To": contact.phone,
+                        "From": number.number,
+                        "Twiml": stream_twiml(call, token),
+                        "StatusCallback": f"{base}/api/twilio/{number.connection_id}/status/{call.id}",
+                        "StatusCallbackEvent": [
+                            "initiated",
+                            "ringing",
+                            "answered",
+                            "completed",
+                        ],
+                        "Timeout": "30",
+                        "TimeLimit": str(config["max_duration_seconds"]),
+                    },
+                )
         db.refresh(call)
         if not response.is_success:
             call.status = "failed"
-            call.error = f"Twilio rejected the request (HTTP {response.status_code})"
+            call.error = f"{provider.title()} rejected the request (HTTP {response.status_code})"
             call.ended_at = time.time()
             finish_recipient(db, call, "failed")
         else:
-            call.provider_sid = response.json()["sid"]
-            if not call.ended_at:
+            if provider == "plivo":
+                from .plivo import record_dispatch
+                record_dispatch(call, response.json())
+            else:
+                call.provider_sid = response.json()["sid"]
+            if not call.ended_at and (provider == "twilio" or call.status in {"dispatching", "dispatch_unknown"}):
                 call.status = response.json().get("status", "queued")
     except (httpx.RequestError, KeyError, ValueError):
         call.status = "dispatch_unknown"
-        call.error = "Provider response was uncertain. Review the Twilio call log before retrying."
+        call.error = "Provider response was uncertain. Review the provider call log before retrying."
         db.add(
             StaffTask(
                 workspace_id=workspace_id,
@@ -371,6 +383,7 @@ class PhoneTransport:
         self.end_marks = {}
         self.session = None
         self.send_lock = asyncio.Lock()
+        self.ended = False
 
     async def write(self, value):
         async with self.send_lock:
@@ -405,7 +418,7 @@ class PhoneTransport:
                     )
                 )
                 db.commit()
-            await update_twilio_call(self.call_id)
+            await self.finish()
 
     async def clear(self):
         self.epoch += 1
@@ -441,6 +454,15 @@ class PhoneTransport:
                     }
                 )
 
+    def normalize_input(self, message):
+        return message
+
+    async def finish(self, twiml=None):
+        if twiml is None:
+            await update_twilio_call(self.call_id)
+        else:
+            await update_twilio_call(self.call_id, twiml)
+
     async def mark(self, name):
         if name not in self.end_marks:
             return
@@ -453,9 +475,9 @@ class PhoneTransport:
                 "The team is unavailable. Please contact the hospital directly."
             )
             SubElement(root, "Hangup")
-            await update_twilio_call(self.call_id, tostring(root, encoding="unicode"))
+            await self.finish(tostring(root, encoding="unicode"))
         else:
-            await update_twilio_call(self.call_id)
+            await self.finish()
 
 
 @router.websocket("/ws/telephony/{call_id}")
@@ -485,9 +507,6 @@ async def phone_socket(ws: WebSocket, call_id: str):
             await ws.close(code=4403)
             return
     await ws.accept()
-    session = None
-    player = None
-    transport = None
     try:
         # Twilio sends connected and then start. Bind its SID and one-time token
         # to the persisted call before accepting any media.
@@ -514,11 +533,24 @@ async def phone_socket(ws: WebSocket, call_id: str):
             if not claimed:
                 await ws.close(code=4403)
                 return
+        await run_phone_session(ws, call_id, PhoneTransport(ws, start["streamSid"], call_id))
+    except Exception:
+        try:
+            await ws.close(code=4403)
+        except Exception:
+            pass
+
+
+async def run_phone_session(ws, call_id, transport):
+    """Provider-independent audio/VAD/recognition and deterministic cleanup."""
+    session = None
+    player = None
+    transport_failed = False
+    try:
         from .runtime import session_class
         from app.web_server import cancel_turn, transcribe_turn
         from app.pipeline.call_audio import CallAudio
 
-        transport = PhoneTransport(ws, start["streamSid"], call_id)
         session = session_class()(transport, call_id)
         transport.session = session
         await session.start_recognition()
@@ -532,19 +564,22 @@ async def phone_socket(ws: WebSocket, call_id: str):
         noise = 0.002
         began = time.monotonic()
         recognition_turn = None
+        pending_audio = bytearray()
         while True:
+            if transport.ended:
+                break
             if session.recognition_failed:
-                await update_twilio_call(call_id)
+                await transport.finish()
                 break
             if player.done():
-                await update_twilio_call(call_id)
+                await transport.finish()
                 break
             if (
                 time.monotonic() - began > session.config["max_duration_seconds"]
                 or time.monotonic() - session.last_activity
                 > session.config["silence_timeout_seconds"]
             ):
-                await update_twilio_call(call_id)
+                await transport.finish()
                 break
             try:
                 message = await asyncio.wait_for(ws.receive_json(), 1)
@@ -553,14 +588,22 @@ async def phone_socket(ws: WebSocket, call_id: str):
             kind = message.get("event")
             if kind == "stop":
                 break
+            message = transport.normalize_input(message)
+            kind = message.get("event")
             if kind == "mark":
                 await transport.mark(message.get("mark", {}).get("name"))
                 continue
             if kind != "media" or session.ending_call:
                 continue
             frame = base64.b64decode(message["media"]["payload"], validate=True)
-            for offset in range(0, len(frame) - 159, 160):
-                chunk = frame[offset : offset + 160]
+            if len(frame) > 8000:
+                raise ValueError("Telephone audio frame exceeds one second")
+            pending_audio.extend(frame)
+            frames = len(pending_audio) // 160
+            ready = bytes(pending_audio[:frames * 160])
+            del pending_audio[:frames * 160]
+            for offset in range(0, len(ready), 160):
+                chunk = ready[offset : offset + 160]
                 u = np.bitwise_not(np.frombuffer(chunk, dtype=np.uint8)).astype(
                     np.int32
                 )
@@ -610,7 +653,10 @@ async def phone_socket(ws: WebSocket, call_id: str):
                                 session, utterance, "audio/wav", secrets.token_hex(8)
                             )
                         )
+    except WebSocketDisconnect:
+        pass
     except Exception:
+        transport_failed = True
         # Avoid logging request bodies, patient speech, or decrypted credentials.
         if session:
             await session.persist(
@@ -623,7 +669,7 @@ async def phone_socket(ws: WebSocket, call_id: str):
 
             await cancel_turn(session)
             await session.close_recognition()
-            await session.close_record("failed" if session.recognition_failed else "completed")
+            await session.close_record("failed" if session.recognition_failed or transport_failed else "completed")
         if player:
             player.cancel()
             try:

@@ -1,0 +1,34 @@
+{
+  "cli_version": "v1.2.1",
+  "mode": "local_synthetic_echo",
+  "exit_code": 0,
+  "frames_echoed": 500,
+  "duration_seconds": 10,
+  "codec": "mulaw",
+  "sample_rate": 8000,
+  "call_status": "completed",
+  "one_use_url_absent_from_access_logs": true,
+  "provider_calls_placed": 0,
+  "ai_providers_used": false,
+  "cli_summary": {
+    "data": {
+      "connected": true,
+      "handshake_sent": true,
+      "frames_sent": 500,
+      "codec": "mulaw",
+      "rate": 8000,
+      "bidirectional": true,
+      "frames_read_back": 500,
+      "errors": 0,
+      "latency_ms": 4,
+      "signed": false,
+      "play_audio_frames": 500,
+      "first_response_ms": 3,
+      "warnings": []
+    }
+  },
+  "limitations": [
+    "Transport preflight with generated tone, not speech accuracy, an agent conversation or carrier validation.",
+    "Executed against the deployed image in a separate temporary synthetic workspace on localhost:8002."
+  ]
+}

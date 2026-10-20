@@ -23,6 +23,7 @@ from .models import (
     StaffTask,
     Workspace,
     LoginSession,
+    Connection,
 )
 from .telephony import (
     place_outbound,
@@ -186,19 +187,29 @@ async def reconcile_calls():
         with database().Session() as db:
             call = db.get(Call, call_id)
             if not call.provider_sid:
-                if call.status == "dispatching" and call.created_at < time.time() - 120:
+                if call.status in {"dispatching", "queued"} and call.created_at < time.time() - 120:
                     call.status = "dispatch_unknown"
                     db.add(
                         StaffTask(
                             workspace_id=call.workspace_id,
                             call_id=call.id,
                             title="Verify interrupted call dispatch",
-                            details="Check the Twilio call log. Automatic redial is blocked.",
+                            details="Check the provider call log. Automatic redial is blocked.",
                         )
                     )
                     db.commit()
                 continue
             try:
+                connection = db.get(Connection, call.connection_id)
+                if connection and connection.provider == "plivo":
+                    from .plivo import reconcile_status
+                    status = await reconcile_status(db, call)
+                    if status in TERMINAL:
+                        call.status = status
+                        call.ended_at = call.ended_at or time.time()
+                        finish_recipient(db, call, status)
+                        db.commit()
+                    continue
                 credentials = twilio_credentials(
                     db, call.connection_id, call.workspace_id
                 )

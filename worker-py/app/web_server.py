@@ -37,6 +37,7 @@ from app.agent.tools import check_red_flag_symptoms, find_available_slots, book_
 from app.pipeline.tts_stream import ClauseSplitter, KokoroEngine
 from app.pipeline.call_audio import CallAudio
 from app.pipeline.call_control import user_requested_hangup, assistant_said_farewell
+from app.pipeline.recognition_options import deepgram_options
 from app.platform.api import router as platform_router
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s")
@@ -117,6 +118,7 @@ class VoiceSession:
         self.is_active = True
         self.active_turn_task: Optional[asyncio.Task] = None
         self.stt_engine = "deepgram"  # "deepgram" or "groq"
+        self.stt_keyterms = []
         self.voice_id = "af_bella"
         self.tts_engine = "kokoro"
         self.tts_fallback_reason = None
@@ -136,6 +138,7 @@ class VoiceSession:
         self.live_stt = DeepgramCallStream(
             self.provider_key("stt", "DEEPGRAM_API_KEY"),
             self.recognition_interim, self.recognition_failure,
+            keyterms=self.stt_keyterms,
         )
         if os.getenv("SEMANTIC_TURN_ENABLED", "1") != "0":
             from app.pipeline.turn_completion import SemanticTurnCompletion, TurnTiming
@@ -209,6 +212,22 @@ class VoiceSession:
             text = await asyncio.shield(result)
             if not self.is_active or self.recognition_failed:
                 return
+            review_audio = getattr(text, "review_audio", None)
+            if review_audio:
+                # One full-context pass for uncertain finalized words, using the
+                # same provider/key/vocabulary. Never repair words from a reference
+                # or send provisional text to the LLM. Cancellation closes HTTP.
+                from app.pipeline.call_audio import mulaw_wav
+                try:
+                    text = await asyncio.wait_for(self.transcribe_audio(mulaw_wav(review_audio), "audio/wav"), 4)
+                except asyncio.TimeoutError:
+                    text = None
+                await self.send_json({"type": "recognition_review", "turn_id": turn_id,
+                                      "reason": "low_word_confidence", "succeeded": bool(text)})
+                if not text:
+                    await self.send_json({"type": "stt_empty", "turn_id": turn_id,
+                                          "message": "Could not confidently recognize that. Please repeat."})
+                    return
             await self.send_json({"type": "telemetry_stt", "turn_id": turn_id,
                                   "engine": "Deepgram Nova-3 streaming",
                                   "latency_ms": round((time.perf_counter() - began) * 1000, 1),
@@ -246,7 +265,7 @@ class VoiceSession:
         """Transcribes incoming audio bytes using Deepgram Nova-3 or Groq Whisper."""
         t0 = time.time()
         deepgram_key = self.provider_key("stt", "DEEPGRAM_API_KEY") if self.stt_engine == "deepgram" else None
-        groq_key = self.provider_key("stt", "GROQ_API_KEY") if self.stt_engine == "groq" else (None if self.keys_managed else os.getenv("GROQ_API_KEY"))
+        groq_key = self.provider_key("stt", "GROQ_API_KEY") if self.stt_engine == "groq" else None
 
         # Prioritize Deepgram if selected and key available
         if self.stt_engine == "deepgram" and deepgram_key:
@@ -257,7 +276,8 @@ class VoiceSession:
                 }
                 async with httpx.AsyncClient(timeout=10.0) as client:
                     r = await client.post(
-                        "https://api.deepgram.com/v1/listen?model=nova-3&smart_format=true",
+                        "https://api.deepgram.com/v1/listen",
+                        params=deepgram_options(self.stt_keyterms),
                         headers=headers,
                         content=audio_bytes,
                     )
@@ -276,7 +296,7 @@ class VoiceSession:
             except Exception as e:
                 logger.error("provider_failure provider=deepgram operation=stt")
 
-        # Fallback / Direct Groq Whisper Turbo
+        # Groq is an explicit selection, including during confidence verification.
         if groq_key:
             try:
                 headers = {"Authorization": f"Bearer {groq_key}"}
@@ -780,6 +800,8 @@ async def voice_websocket(ws: WebSocket):
 
 from app.platform.telephony import router as telephony_router
 app.include_router(telephony_router)
+from app.platform.plivo import router as plivo_router
+app.include_router(plivo_router)
 DASHBOARD_DIR = WEB_DIR / "dashboard"
 if DASHBOARD_DIR.exists():
     app.mount("/dashboard/assets", StaticFiles(directory=str(DASHBOARD_DIR / "assets")), name="dashboard-assets")

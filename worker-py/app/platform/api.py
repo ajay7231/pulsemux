@@ -246,6 +246,7 @@ def connections(user=Depends(current_user), db: Session = Depends(get_db)):
 def credentials_valid(provider, value):
     allowed = {
         "twilio": {"account_sid", "auth_token", "api_key_sid", "api_key_secret"},
+        "plivo": {"auth_id", "auth_token"},
         "groq": {"api_key"},
         "deepgram": {"api_key"},
         "openai": {"api_key"},
@@ -254,9 +255,11 @@ def credentials_valid(provider, value):
         not isinstance(v, str) or len(v) > 1000 for v in value.values()
     ):
         raise HTTPException(422, "Invalid credential fields")
-    required = {"account_sid", "auth_token"} if provider == "twilio" else {"api_key"}
+    required = {"account_sid", "auth_token"} if provider == "twilio" else ({"auth_id", "auth_token"} if provider == "plivo" else {"api_key"})
     if any(not value.get(field, "").strip() for field in required):
         raise HTTPException(422, "Complete all required credential fields")
+    if provider == "plivo" and not re.fullmatch(r"[MS]A[A-Z0-9]{18}", value["auth_id"]):
+        raise HTTPException(422, "Invalid Plivo Auth ID")
     if provider == "twilio":
         if not re.fullmatch(r"AC[0-9a-fA-F]{32}", value["account_sid"]):
             raise HTTPException(422, "Invalid Twilio Account SID")
@@ -334,6 +337,11 @@ async def test_connection(
                 )
                 result = await client.get(
                     f"https://api.twilio.com/2010-04-01/Accounts/{sid}.json", auth=auth
+                )
+            elif item.provider == "plivo":
+                result = await client.get(
+                    f'https://api.plivo.com/v1/Account/{credentials["auth_id"]}/',
+                    auth=(credentials["auth_id"], credentials["auth_token"]),
                 )
             else:
                 auth = "Token" if item.provider == "deepgram" else "Bearer"
@@ -854,8 +862,8 @@ def numbers(user=Depends(current_user), db: Session = Depends(get_db)):
 def create_number(data: PhoneInput, user=Depends(admin), db: Session = Depends(get_db)):
     connection = owned(db, Connection, data.connection_id, user.workspace_id)
     owned(db, Agent, data.agent_id, user.workspace_id)
-    if connection.provider != "twilio" or not connection.active:
-        raise HTTPException(422, "Select an active Twilio connection")
+    if connection.provider not in {"twilio", "plivo"} or not connection.active:
+        raise HTTPException(422, "Select an active Twilio or Plivo connection")
     item = PhoneNumber(workspace_id=user.workspace_id, **data.model_dump())
     db.add(item)
     try:

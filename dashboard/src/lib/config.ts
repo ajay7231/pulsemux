@@ -60,6 +60,7 @@ export const DEFAULT_CONFIG: AgentConfig = {
     "Be warm and concise. Ask one question at a time. Use approved hospital information. Offer a staff callback when you cannot help.",
   tone: "warm",
   stt_engine: "deepgram",
+  stt_keyterms: [],
   stt_connection_id: null,
   llm_connection_id: null,
   llm_model: "",

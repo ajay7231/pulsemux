@@ -23,13 +23,19 @@ export function ConnectionFields({
             })
           }
         >
-          {(draft._providers || ["deepgram", "groq", "openai", "twilio"]).map(
-            (p: string) => (
-              <option key={p} value={p}>
-                {p === "openai" ? "OpenAI" : p[0].toUpperCase() + p.slice(1)}
-              </option>
-            ),
-          )}
+          {(
+            draft._providers || [
+              "deepgram",
+              "groq",
+              "openai",
+              "twilio",
+              "plivo",
+            ]
+          ).map((p: string) => (
+            <option key={p} value={p}>
+              {p === "openai" ? "OpenAI" : p[0].toUpperCase() + p.slice(1)}
+            </option>
+          ))}
         </select>
       </Field>
       {draft.provider === "twilio" ? (
@@ -46,6 +52,16 @@ export function ConnectionFields({
           </Field>
           <Field label="API key secret (optional)">
             {input("api_key_secret", "password", false)}
+          </Field>
+        </>
+      ) : draft.provider === "plivo" ? (
+        <>
+          <Field label="Auth ID">{input("auth_id")}</Field>
+          <Field
+            label="Auth Token"
+            hint="Used for API access and signed webhook verification."
+          >
+            {input("auth_token", "password")}
           </Field>
         </>
       ) : (

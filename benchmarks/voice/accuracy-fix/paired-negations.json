@@ -1,0 +1,259 @@
+{
+  "schema_version": 1,
+  "mode": "paired_synthetic_release",
+  "generated_at": "2026-10-18T18:53:04Z",
+  "scenario_sha256": "966042f2746f8933c895a24a1ec70a835f83e3e7c7909dcc5a57504d137de401",
+  "configuration": {
+    "model": "openai/gpt-oss-120b",
+    "voice": "af_bella",
+    "encoding": "mulaw",
+    "sample_rate": 8000,
+    "concurrency": 1,
+    "repetitions": 2,
+    "http_pause_ms": 800,
+    "streaming_candidate_ms": 360,
+    "recognition_options": {
+      "model": "nova-3",
+      "language": "en",
+      "smart_format": "false",
+      "punctuate": "true",
+      "keyterm": [
+        "ticagrelor",
+        "Brilinta",
+        "aspirin",
+        "Ecosprin",
+        "metoprolol succinate",
+        "Betaloc XR",
+        "atorvastatin",
+        "Lipitor",
+        "nitroglycerin",
+        "Sorbitrate"
+      ]
+    },
+    "vocabulary_sha256": "7853b2f21bf7a56f2977ca8dcb203020eb96a845ab0be9bcd211d8af57a07c8d"
+  },
+  "fixtures": [
+    {
+      "scenario": "negated_cancellation",
+      "variant": "clean",
+      "file": "negated_cancellation-clean.wav",
+      "sha256": "ee5cbffd8a9dc189f397109cd351782d367566deab171af041270ef645dafc53",
+      "audio_seconds": 2.06
+    },
+    {
+      "scenario": "negated_cancellation",
+      "variant": "digital_noise_20db",
+      "file": "negated_cancellation-digital_noise_20db.wav",
+      "sha256": "d5eb974114e3237a46185abfcc29e4fdf01d630326b3f3ef05148a4a5c759ef2",
+      "audio_seconds": 2.06
+    },
+    {
+      "scenario": "negated_dose",
+      "variant": "clean",
+      "file": "negated_dose-clean.wav",
+      "sha256": "a2184688ec47e0b6daa2170396cac871fcbc6f10114e6e7a6916d404170e93c9",
+      "audio_seconds": 4.24
+    },
+    {
+      "scenario": "negated_dose",
+      "variant": "digital_noise_20db",
+      "file": "negated_dose-digital_noise_20db.wav",
+      "sha256": "69b32f23220eb3e1ac4cf521e04b53ff4fb4ed0aacbedfd95d85dbe2e883c649",
+      "audio_seconds": 4.24
+    }
+  ],
+  "rows": [
+    {
+      "scenario": "negated_cancellation",
+      "repetition": 0,
+      "variant": "clean",
+      "pipeline": "http_fixed",
+      "reference": "I do not want to cancel my appointment.",
+      "audio_sha256": "ee5cbffd8a9dc189f397109cd351782d367566deab171af041270ef645dafc53",
+      "transcript": "I do not want to cancel my appointment.",
+      "completed": true,
+      "recognition_review_count": 0,
+      "errors": [],
+      "commit_count": 1,
+      "speech_end_to_commit_ms": 802.99,
+      "speech_end_to_first_text_ms": 2265.07,
+      "speech_end_to_first_wav_ms": 3648.89,
+      "commit_to_first_wav_ms": 2845.9,
+      "pending_tasks_after_close": 0
+    },
+    {
+      "scenario": "negated_cancellation",
+      "repetition": 0,
+      "variant": "clean",
+      "pipeline": "streaming_semantic",
+      "reference": "I do not want to cancel my appointment.",
+      "audio_sha256": "ee5cbffd8a9dc189f397109cd351782d367566deab171af041270ef645dafc53",
+      "transcript": "I do not want to cancel my appointment.",
+      "completed": true,
+      "recognition_review_count": 0,
+      "errors": [],
+      "commit_count": 1,
+      "speech_end_to_commit_ms": 507.03,
+      "speech_end_to_first_text_ms": 1032.15,
+      "speech_end_to_first_wav_ms": 1818.8,
+      "commit_to_first_wav_ms": 1311.77,
+      "pending_tasks_after_close": 0
+    },
+    {
+      "scenario": "negated_dose",
+      "repetition": 0,
+      "variant": "clean",
+      "pipeline": "http_fixed",
+      "reference": "The test label says ninety milligrams, not ninety-five milligrams.",
+      "audio_sha256": "a2184688ec47e0b6daa2170396cac871fcbc6f10114e6e7a6916d404170e93c9",
+      "transcript": "The test label says ninety milligrams, not ninety five milligrams.",
+      "completed": true,
+      "recognition_review_count": 0,
+      "errors": [],
+      "commit_count": 1,
+      "speech_end_to_commit_ms": 801.9,
+      "speech_end_to_first_text_ms": 2466.0,
+      "speech_end_to_first_wav_ms": 3356.91,
+      "commit_to_first_wav_ms": 2555.0,
+      "pending_tasks_after_close": 0
+    },
+    {
+      "scenario": "negated_dose",
+      "repetition": 0,
+      "variant": "clean",
+      "pipeline": "streaming_semantic",
+      "reference": "The test label says ninety milligrams, not ninety-five milligrams.",
+      "audio_sha256": "a2184688ec47e0b6daa2170396cac871fcbc6f10114e6e7a6916d404170e93c9",
+      "transcript": "The test label says ninety milligrams, not ninety five milligrams.",
+      "completed": true,
+      "recognition_review_count": 0,
+      "errors": [],
+      "commit_count": 1,
+      "speech_end_to_commit_ms": 633.7,
+      "speech_end_to_first_text_ms": 1192.87,
+      "speech_end_to_first_wav_ms": 2054.43,
+      "commit_to_first_wav_ms": 1420.72,
+      "pending_tasks_after_close": 0
+    },
+    {
+      "scenario": "negated_cancellation",
+      "repetition": 1,
+      "variant": "digital_noise_20db",
+      "pipeline": "streaming_semantic",
+      "reference": "I do not want to cancel my appointment.",
+      "audio_sha256": "d5eb974114e3237a46185abfcc29e4fdf01d630326b3f3ef05148a4a5c759ef2",
+      "transcript": "Do not want to cancel my appointment.",
+      "completed": true,
+      "recognition_review_count": 0,
+      "errors": [],
+      "commit_count": 1,
+      "speech_end_to_commit_ms": 636.6,
+      "speech_end_to_first_text_ms": 1179.12,
+      "speech_end_to_first_wav_ms": 2021.83,
+      "commit_to_first_wav_ms": 1385.22,
+      "pending_tasks_after_close": 0
+    },
+    {
+      "scenario": "negated_cancellation",
+      "repetition": 1,
+      "variant": "digital_noise_20db",
+      "pipeline": "http_fixed",
+      "reference": "I do not want to cancel my appointment.",
+      "audio_sha256": "d5eb974114e3237a46185abfcc29e4fdf01d630326b3f3ef05148a4a5c759ef2",
+      "transcript": "Do not want to cancel my appointment.",
+      "completed": true,
+      "recognition_review_count": 0,
+      "errors": [],
+      "commit_count": 1,
+      "speech_end_to_commit_ms": 802.63,
+      "speech_end_to_first_text_ms": 2521.62,
+      "speech_end_to_first_wav_ms": 3256.55,
+      "commit_to_first_wav_ms": 2453.91,
+      "pending_tasks_after_close": 0
+    },
+    {
+      "scenario": "negated_dose",
+      "repetition": 1,
+      "variant": "digital_noise_20db",
+      "pipeline": "streaming_semantic",
+      "reference": "The test label says ninety milligrams, not ninety-five milligrams.",
+      "audio_sha256": "69b32f23220eb3e1ac4cf521e04b53ff4fb4ed0aacbedfd95d85dbe2e883c649",
+      "transcript": "The test label says ninety milligrams, not ninety five milligrams.",
+      "completed": true,
+      "recognition_review_count": 0,
+      "errors": [],
+      "commit_count": 1,
+      "speech_end_to_commit_ms": 645.94,
+      "speech_end_to_first_text_ms": 969.13,
+      "speech_end_to_first_wav_ms": 1770.46,
+      "commit_to_first_wav_ms": 1124.52,
+      "pending_tasks_after_close": 0
+    },
+    {
+      "scenario": "negated_dose",
+      "repetition": 1,
+      "variant": "digital_noise_20db",
+      "pipeline": "http_fixed",
+      "reference": "The test label says ninety milligrams, not ninety-five milligrams.",
+      "audio_sha256": "69b32f23220eb3e1ac4cf521e04b53ff4fb4ed0aacbedfd95d85dbe2e883c649",
+      "transcript": "The test label says ninety milligrams, not ninety five milligrams.",
+      "completed": true,
+      "recognition_review_count": 0,
+      "errors": [],
+      "commit_count": 1,
+      "speech_end_to_commit_ms": 801.8,
+      "speech_end_to_first_text_ms": 2611.39,
+      "speech_end_to_first_wav_ms": 3413.71,
+      "commit_to_first_wav_ms": 2611.91,
+      "pending_tasks_after_close": 0
+    }
+  ],
+  "limitations": [
+    "Generated synthetic speech; not reviewed human/noise recordings.",
+    "Alternate clean/digital 20dB SNR noise; identical hashed audio in both configurations.",
+    "Scripted speech-end boundary after retained audio; segmentation is assessed separately.",
+    "First valid WAV emitted on server excludes browser decode, hardware and carrier playback.",
+    "Uses VoiceSession with a generic acknowledgement prompt; excludes managed hospital RAG.",
+    "Historical Phase 1 audio was not retained; this is a new matched baseline, not an identical historical replay."
+  ],
+  "summary": {
+    "http_fixed": {
+      "trials": 4,
+      "failed_trials": 0,
+      "speech_end_to_first_text_ms": {
+        "n": 4,
+        "p50_ms": 2493.81,
+        "p95_ms": 2611.39
+      },
+      "speech_end_to_first_wav_ms": {
+        "n": 4,
+        "p50_ms": 3385.31,
+        "p95_ms": 3648.89
+      },
+      "commit_to_first_wav_ms": {
+        "n": 4,
+        "p50_ms": 2583.45,
+        "p95_ms": 2845.9
+      }
+    },
+    "streaming_semantic": {
+      "trials": 4,
+      "failed_trials": 0,
+      "speech_end_to_first_text_ms": {
+        "n": 4,
+        "p50_ms": 1105.63,
+        "p95_ms": 1192.87
+      },
+      "speech_end_to_first_wav_ms": {
+        "n": 4,
+        "p50_ms": 1920.32,
+        "p95_ms": 2054.43
+      },
+      "commit_to_first_wav_ms": {
+        "n": 4,
+        "p50_ms": 1348.49,
+        "p95_ms": 1420.72
+      }
+    }
+  }
+}

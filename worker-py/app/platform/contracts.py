@@ -52,7 +52,7 @@ class AgentPublic(RecordPublic):
 
 class ConnectionPublic(RecordPublic):
     name: str
-    provider: Literal["deepgram", "groq", "openai", "twilio"]
+    provider: Literal["deepgram", "groq", "openai", "twilio", "plivo"]
     revision: int
     active: bool
     test_status: str

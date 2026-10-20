@@ -34,9 +34,11 @@ async def run(args):
     from app.platform.telephony import wav_mulaw
     from app.pipeline.call_audio import mulaw_wav
     import numpy as np
+    from app.pipeline.recognition_options import deepgram_options, validate_keyterms
     if not args.live or not all(os.getenv(key) for key in ['DEEPGRAM_API_KEY', 'GROQ_API_KEY']):
         raise RuntimeError('Explicit --live and process-environment Deepgram/Groq keys are required')
     manifest = args.scenarios.read_bytes()
+    keyterms = validate_keyterms(json.loads(args.vocabulary.read_text())['terms']) if args.vocabulary else []
     cases = [case for case in json.loads(manifest)['scenarios'] if case['reference']]
     args.fixtures.mkdir(parents=True, exist_ok=True)
     report = {'schema_version': 1, 'mode': 'paired_synthetic_release',
@@ -52,6 +54,9 @@ async def run(args):
                  'First valid WAV emitted on server excludes browser decode, hardware and carrier playback.',
                  'Uses VoiceSession with a generic acknowledgement prompt; excludes managed hospital RAG.',
                  'Historical Phase 1 audio was not retained; this is a new matched baseline, not an identical historical replay.']}
+    report['configuration']['recognition_options'] = deepgram_options(keyterms)
+    if args.vocabulary:
+        report['configuration']['vocabulary_sha256'] = hashlib.sha256(args.vocabulary.read_bytes()).hexdigest()
     generator = VoiceSession(None)
     generator.keys_managed = True
     generator.provider_keys = {}
@@ -92,6 +97,7 @@ async def run(args):
             self.speech_end = self.commit = self.first_text = self.first_audio = None
             self.transcript, self.errors, self.commits = '', [], 0
             self.completed = False
+            self.reviews = 0
 
         async def send_text(self, payload):
             event = json.loads(payload)
@@ -112,6 +118,8 @@ async def run(args):
                 self.errors.append(event['type'])
             elif event['type'] == 'turn_complete':
                 self.completed = True
+            elif event['type'] == 'recognition_review':
+                self.reviews += 1
 
     for repetition in range(args.repetitions):
         variant = 'clean' if repetition % 2 == 0 else 'digital_noise_20db'
@@ -124,6 +132,7 @@ async def run(args):
                 observer = Observer()
                 trial = VoiceSession(observer)
                 trial.keys_managed = True
+                trial.stt_keyterms = keyterms
                 trial.provider_keys = {'stt': os.environ['DEEPGRAM_API_KEY'], 'llm': os.environ['GROQ_API_KEY']}
                 trial.llm_model = args.model
                 trial.system_prompt = ('Synthetic transport evaluation. Reply with one short acknowledgement sentence. '
@@ -168,6 +177,7 @@ async def run(args):
                 def elapsed(end, start):
                     return round((end - start) * 1000, 2) if end is not None and start is not None else None
                 row.update({'transcript': observer.transcript, 'completed': observer.completed,
+                    'recognition_review_count': observer.reviews,
                     'errors': observer.errors, 'commit_count': observer.commits,
                     'speech_end_to_commit_ms': elapsed(observer.commit, observer.speech_end),
                     'speech_end_to_first_text_ms': elapsed(observer.first_text, observer.speech_end),
@@ -195,6 +205,7 @@ def main():
     parser.add_argument('--scenarios', type=Path, default=ROOT / 'benchmarks/voice/scenarios.json')
     parser.add_argument('--fixtures', type=Path, required=True)
     parser.add_argument('--output', type=Path, required=True)
+    parser.add_argument('--vocabulary', type=Path, help='Explicit protocol vocabulary JSON, shared by both paths; never reference-derived')
     asyncio.run(run(parser.parse_args()))
 
 

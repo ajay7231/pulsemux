@@ -5,6 +5,8 @@
 > setup, deployment, architecture, operational limits, and testing. The original
 > media-gateway and benchmark documentation is retained below.
 
+Plivo is supported alongside Twilio. See [Plivo setup and number-free stream testing](docs/PLIVO.md).
+
 # PulseMux: Sub-500ms Bi-Directional Clinical Voice Gateway
 
 [![Go](https://img.shields.io/badge/Go-1.23-00ADD8?logo=go&logoColor=white)](https://golang.org)

@@ -86,7 +86,7 @@ export function OutreachFields({
         <Phone size={20} />
         <p>
           {modal === "outbound"
-            ? "Submitting this form places a real call through your Twilio account."
+            ? "Submitting this form places a real call through the selected telephone provider account."
             : "Campaigns are saved as drafts. Start them from the campaign list when ready."}
         </p>
       </div>

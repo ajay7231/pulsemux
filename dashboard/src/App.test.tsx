@@ -241,7 +241,7 @@ test("template flow saves provider configuration as a real draft", async () => {
     requests.find((r) => r.path === "/agents" && r.method === "POST")?.body
       .config.template,
   ).toBe("reception");
-  await person.click(screen.getByRole("button", { name: "Test agent" }));
+  await person.click(await screen.findByRole("button", { name: "Test agent" }));
   expect(
     await screen.findByRole("combobox", { name: "Language model" }),
   ).toBeTruthy();
@@ -353,4 +353,21 @@ test("adding an ASR connection in the editor selects it and preserves agent edit
   expect(
     ((await screen.findByLabelText("Agent name")) as HTMLInputElement).value,
   ).toBe("Reception draft in progress");
+});
+
+test("Plivo connection sends Auth ID and token only on save", async () => {
+  const requests = mockApi();
+  const person = userEvent.setup();
+  renderApp();
+  await person.click(await screen.findByRole("button", { name: "Connections" }));
+  await person.click(await screen.findByRole("button", { name: "Add connection" }));
+  await person.selectOptions(screen.getByRole("combobox", { name: "Provider" }), "plivo");
+  await person.type(screen.getByLabelText("Connection name"), "Plivo hospital");
+  await person.type(screen.getByLabelText("Auth ID"), "MAAAAAAAAAAAAAAAAAAA");
+  await person.type(screen.getByLabelText("Auth Token"), "synthetic-plivo-token");
+  expect(requests.filter((r) => r.path === "/connections" && r.method === "POST")).toHaveLength(0);
+  await person.click(screen.getByRole("button", { name: "Save" }));
+  await screen.findByText("Connection saved securely");
+  expect(requests.find((r) => r.path === "/connections" && r.method === "POST")?.body.credentials).toEqual({ auth_id: "MAAAAAAAAAAAAAAAAAAA", auth_token: "synthetic-plivo-token" });
+  expect(screen.queryByDisplayValue("synthetic-plivo-token")).toBeNull();
 });

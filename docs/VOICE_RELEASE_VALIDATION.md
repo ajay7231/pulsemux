@@ -1,8 +1,13 @@
 # First delivery — validation and release record
 
-Date: 2026-10-18. **Release acceptance: NOT PASSED.** The implementation and
+Date: 2026-10-18. **Historical Phase 5 record; overall release acceptance remains open.** The implementation and
 validation tools are deployed for testing. Faster timings do not override the
 failed recognition-quality gates below.
+
+**Update:** The [recognition accuracy follow-up](RECOGNITION_ACCURACY.md) closes
+these automated accuracy gates on the same fixture hashes and unchanged scorer.
+The historical results below are preserved; human/noise and carrier acceptance
+remain open.
 
 ## Matched provider comparison
 
@@ -163,15 +168,16 @@ python scripts/streaming_idle_check.py --output /reports/idle.json
 
 ## Remaining acceptance work
 
-1. Resolve recognition regression and noisy medication failures with a reviewed
-   speech corpus, then rerun the same hashed-audio gates. Do not repair reference
-   words or weaken normalization to manufacture a pass.
-2. Establish an explicit date interpretation policy and reviewed references.
+1. **Same-fixture automated accuracy gates closed:** the follow-up recovered
+   medication terms and WER non-regression without changing references or scoring.
+   Generalization to reviewed human speech remains open below.
+2. **Date formatting policy implemented:** retain spoken dates without automatic
+   locale-dependent rewriting; confirm ambiguous caller-supplied dates explicitly.
 3. Retain consented, annotated human speech/noise recordings with broader speaker
    coverage. Current microphone observations and digital-noise fixtures do not
    substitute for that corpus.
 4. Measure carrier playback when a test number/recipient and authorization exist.
    Protocol-emulated telephone tests are complete; no real outbound call was made.
 
-These are explicit open gates. `plan_2.md` must not be marked fully accepted until
+Items 3–4 remain explicit open gates. `plan_2.md` must not be marked fully accepted until
 they are resolved or its acceptance criteria are explicitly revised by the user.

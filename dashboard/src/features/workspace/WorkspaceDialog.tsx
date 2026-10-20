@@ -68,6 +68,9 @@ export function WorkspaceDialog({
   isAdmin,
   refresh,
 }: WorkspaceDialogProps) {
+  const numberProvider =
+    connections.find((c) => c.id === selected?.connection_id)?.provider ||
+    "twilio";
   const knowledge = useQuery({
     queryKey: ["workspace", session.workspace.id, "knowledge-config"],
     queryFn: metadataService.knowledgeConfig,
@@ -113,7 +116,7 @@ export function WorkspaceDialog({
             documents: selected?.name,
             document: "Add reference document",
             number: "Assign a phone number",
-            "number-help": "Connect your Twilio number",
+            "number-help": "Connect your phone number",
             contact: draft.id ? "Edit contact" : "Add contact",
             campaign: "Create a campaign",
             outbound: "Place an outbound call",
@@ -184,7 +187,9 @@ export function WorkspaceDialog({
                           }
                         : {}),
                     }
-                  : { api_key: draft.api_key };
+                  : draft.provider === "plivo"
+                    ? { auth_id: draft.auth_id, auth_token: draft.auth_token }
+                    : { api_key: draft.api_key };
               const savedConnection = await connectionService.save(
                 { name: draft.name, provider: draft.provider, credentials },
                 draft.id,
@@ -228,7 +233,7 @@ export function WorkspaceDialog({
                 connection_id: draft.connection_id,
               });
               saveDone(
-                "Number assigned. Configure its Twilio inbound webhook to finish setup.",
+                "Number assigned. Configure its provider inbound webhook to finish setup.",
               );
             }
             if (modal === "contact") {
@@ -349,17 +354,17 @@ export function WorkspaceDialog({
           {modal === "number" && (
             <>
               <Field
-                label="Twilio phone number"
-                hint="Use a number owned by the selected Twilio account, including country code."
+                label="Phone number"
+                hint="Use a voice-enabled number owned by the selected provider account, including country code."
               >
                 {input("number", "tel")}
               </Field>
               <Field label="Label">{input("label", "text", false)}</Field>
-              <Field label="Twilio connection">
+              <Field label="Telephone connection">
                 {select(
                   "connection_id",
                   connections.filter(
-                    (c) => c.active && c.provider === "twilio",
+                    (c) => c.active && ["twilio", "plivo"].includes(c.provider),
                   ),
                 )}
               </Field>
@@ -451,12 +456,16 @@ export function WorkspaceDialog({
       {modal === "number-help" && (
         <div className="modal-content">
           <p>
-            In the Twilio Console, open <strong>{selected?.number}</strong>.
-            Under Voice configuration, set “A call comes in” to Webhook (HTTP
-            POST):
+            In your {numberProvider === "plivo" ? "Plivo" : "Twilio"} console,
+            configure <strong>{selected?.number}</strong> with this{" "}
+            {numberProvider === "plivo"
+              ? "application Answer URL"
+              : "incoming-call webhook"}{" "}
+            (HTTP POST):
           </p>
           <pre>
-            {location.origin}/api/twilio/{selected?.connection_id}/inbound
+            {location.origin}/api/{numberProvider}/{selected?.connection_id}
+            /inbound
           </pre>
           <p className="muted">
             Use your deployment’s public HTTPS origin. Set the same origin as
@@ -470,14 +479,14 @@ export function WorkspaceDialog({
         <div className="modal-content">
           <h3>From configuration to conversation</h3>
           <ol>
-            <li>Add your speech, language model, and Twilio connections.</li>
+            <li>Add your speech, language model, and telephone connections.</li>
             <li>Create an agent from a workflow template.</li>
             <li>Attach approved knowledge, then save and test the draft.</li>
             <li>Publish the tested agent and assign a number.</li>
             <li>Place a call or create an outreach campaign.</li>
           </ol>
           <p>
-            Real telephone calls need a public HTTPS origin, an owned Twilio
+            Real telephone calls need a public HTTPS origin, an owned provider
             number, and a running campaign worker. Appointment changes currently
             create staff requests.
           </p>

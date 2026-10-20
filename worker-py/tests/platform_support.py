@@ -6,6 +6,7 @@ from cryptography.fernet import Fernet
 from fastapi.testclient import TestClient
 from app.platform.database import database
 from app.web_server import app
+from app.platform.throttling import _local_attempts
 
 
 @contextmanager
@@ -18,6 +19,7 @@ def platform_client():
             "PLATFORM_ENCRYPTION_KEYS": Fernet.generate_key().decode(),
             "PLATFORM_ENV": "development",
             "PUBLIC_BASE_URL": "",
+            "REDIS_URL": "",
             # Unrelated tests use fake keys and exercise utterance fallback.
             # Streaming transport tests explicitly enable and stub the socket.
             "DEEPGRAM_STREAMING_ENABLED": "0",
@@ -25,6 +27,9 @@ def platform_client():
         },
     ):
         database.cache_clear()
+        # Each temporary database is a separate installation. Keep real limits
+        # within a test while preventing earlier installations consuming its quota.
+        _local_attempts.clear()
         with TestClient(app) as client:
             response = client.post(
                 "/api/setup",

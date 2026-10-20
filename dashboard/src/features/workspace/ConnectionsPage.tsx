@@ -103,8 +103,8 @@ export function ConnectionsPage({
         </div>
       ) : (
         <Empty title="No connections to display">
-          Save Twilio, Deepgram, Groq, or OpenAI credentials. Keys are encrypted
-          and never returned to the browser.
+          Save Twilio, Plivo, Deepgram, Groq, or OpenAI credentials. Keys are
+          encrypted and never returned to the browser.
         </Empty>
       )}
     </section>

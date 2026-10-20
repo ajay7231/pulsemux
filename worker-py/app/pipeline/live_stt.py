@@ -8,13 +8,27 @@ import json
 import logging
 import math
 import time
+from collections import deque
 from urllib.parse import urlencode
+from .recognition_options import deepgram_options
 
 logger = logging.getLogger(__name__)
 
 
 class RecognitionUnavailable(RuntimeError):
     pass
+
+
+class RecognitionTranscript(str):
+    """Final words plus ephemeral audio for one confidence-gated verification.
+
+    This remains a string for existing callers. Audio never goes to history,
+    browser events or logs and is released with the collector result.
+    """
+    def __new__(cls, text, review_audio=None):
+        value = super().__new__(cls, text)
+        value.review_audio = review_audio
+        return value
 
 
 async def connect_deepgram(url, key):
@@ -31,12 +45,13 @@ async def connect_deepgram(url, key):
 class DeepgramCallStream:
     def __init__(self, key, on_interim, on_failure, *, connector=None,
                  finalize_timeout=3.0, keepalive_seconds=3.0, on_result=None,
-                 endpointing_ms=None):
+                 endpointing_ms=None, keyterms=()):
         self.key = key
         self.on_interim = on_interim
         self.on_failure = on_failure
         self.on_result = on_result
         self.endpointing_ms = endpointing_ms
+        self.options = deepgram_options(keyterms)
         self.connector = connector or connect_deepgram
         self.finalize_timeout = finalize_timeout
         self.keepalive_seconds = keepalive_seconds
@@ -50,6 +65,8 @@ class DeepgramCallStream:
         self.floor = 0.0
         self.current = None
         self.words = {}
+        self.confidences = {}
+        self.audio_frames = deque(maxlen=1500)  # 30s / 240KB; includes 20s turn + pre-roll/flush.
         self.provisional = {}
         self.finalized_until = 0.0
         self.changed = asyncio.Event()
@@ -65,9 +82,9 @@ class DeepgramCallStream:
             raise RecognitionUnavailable("Recognition connection is not restartable")
         if not self.key:
             raise RecognitionUnavailable("Speech recognition connection is missing")
-        query = urlencode({"model": "nova-3", "encoding": "mulaw", "sample_rate": 8000,
-                           "channels": 1, "interim_results": "true", "smart_format": "true",
-                           "endpointing": self.endpointing_ms if self.endpointing_ms is not None else "false"})
+        query = urlencode({**self.options, "encoding": "mulaw", "sample_rate": 8000,
+                           "channels": 1, "interim_results": "true",
+                           "endpointing": self.endpointing_ms if self.endpointing_ms is not None else "false"}, doseq=True)
         try:
             self.ws = await self.connector("wss://api.deepgram.com/v1/listen?" + query, self.key)
         except asyncio.CancelledError:
@@ -92,6 +109,7 @@ class DeepgramCallStream:
         except asyncio.QueueFull:
             raise RecognitionUnavailable("Speech recognition audio backlog exceeded") from None
         self.samples += len(payload)
+        self.audio_frames.append(payload)
 
     def begin_turn(self, turn_id, *, continue_turn=False):
         self._check()
@@ -102,6 +120,7 @@ class DeepgramCallStream:
             self.provisional.clear()
         self.current = (turn_id, start)
         self.words = {span: word for span, word in self.words.items() if span[1] >= self.audio_time - 60}
+        self.confidences = {span: value for span, value in self.confidences.items() if span in self.words}
 
     def request_finalize(self):
         """Flush a pause candidate without committing its reversible turn window."""
@@ -120,7 +139,11 @@ class DeepgramCallStream:
         end = self.audio_time
         self.floor = end
         # Capture time before scheduling, so subsequent frames cannot shift this boundary.
-        task = asyncio.create_task(self._collect(start, end, max(start, end - pause_ms / 1000)))
+        buffer_start = self.samples - len(self.audio_frames) * 160
+        start_sample = round(start * 8000)
+        # Snapshot before yielding; subsequent turns cannot overwrite this turn's audio.
+        audio = b''.join(self.audio_frames)[start_sample - buffer_start:] if start_sample >= buffer_start else None
+        task = asyncio.create_task(self._collect(start, end, max(start, end - pause_ms / 1000), audio))
         self.collectors.add(task)
         task.add_done_callback(self._collected)
         return task
@@ -134,7 +157,7 @@ class DeepgramCallStream:
         self.floor = self.audio_time
         self.current = None
 
-    async def _collect(self, start, end, speech_end):
+    async def _collect(self, start, end, speech_end, audio):
         # A cancelled response must not abandon a Finalize already sent to the
         # provider. Serialize flushes until their response or a fatal timeout.
         async with self.flush_lock:
@@ -153,8 +176,10 @@ class DeepgramCallStream:
                     if remaining <= 0:
                         raise asyncio.TimeoutError
                     await asyncio.wait_for(self.changed.wait(), remaining)
-                return " ".join(word for (a, b), word in sorted(self.words.items())
-                                if start <= (a + b) / 2 < end)
+                selected = [(span, word) for span, word in sorted(self.words.items())
+                            if start <= sum(span) / 2 < end]
+                uncertain = any(self.confidences.get(span, 1.0) < .8 for span, _ in selected)
+                return RecognitionTranscript(" ".join(word for _, word in selected), audio if uncertain else None)
             except asyncio.TimeoutError:
                 await self._fail("finalization_timeout")
                 raise RecognitionUnavailable("Speech recognition did not finalize") from None
@@ -202,15 +227,21 @@ class DeepgramCallStream:
                 if text and not words:
                     raise ValueError("Timed recognition words are required")
                 parsed = []
+                confidences = {}
                 for word in words:
                     a, b = float(word["start"]), float(word["end"])
                     value = str(word.get("punctuated_word") or word["word"])
                     if len(value) > 256 or not math.isfinite(a + b) or a < 0 or b < a or b > self.audio_time + .1:
                         raise ValueError("Invalid recognition word time")
                     parsed.append(((round(a, 4), round(b, 4)), value))
+                    confidence = float(word.get("confidence", 1.0))
+                    if not math.isfinite(confidence) or not 0 <= confidence <= 1:
+                        raise ValueError("Invalid recognition confidence")
+                    confidences[parsed[-1][0]] = confidence
                 if data.get("is_final"):
                     for span, value in parsed:
                         self.words[span] = value
+                        self.confidences[span] = confidences[span]
                     if len(self.words) > 4096:
                         raise ValueError("Recognition buffer exceeded")
                     self.finalized_until = max(self.finalized_until, end)
@@ -282,6 +313,8 @@ class DeepgramCallStream:
         self.tasks.clear()
         self.collectors.clear()
         self.words.clear()
+        self.confidences.clear()
+        self.audio_frames.clear()
         self.provisional.clear()
         self.current = None
         while not self.queue.empty():

@@ -47,7 +47,7 @@ class UserCreate(Strict):
 
 class ConnectionInput(Strict):
     name: str = Field(min_length=2, max_length=120)
-    provider: Literal["deepgram", "groq", "openai", "twilio"]
+    provider: Literal["deepgram", "groq", "openai", "twilio", "plivo"]
     credentials: Dict[str, str]
 
 
@@ -76,6 +76,7 @@ class AgentConfig(Strict):
     )
     tone: Literal["warm", "professional", "calm"] = "warm"
     stt_engine: Literal["deepgram", "groq"] = "deepgram"
+    stt_keyterms: List[str] = Field(default_factory=list, max_length=25)
     stt_connection_id: Optional[str] = None
     llm_connection_id: Optional[str] = None
     llm_model: str = Field(default="qwen/qwen3.8-27b", max_length=100)
@@ -95,6 +96,12 @@ class AgentConfig(Strict):
     max_duration_seconds: int = Field(default=600, ge=60, le=1800)
     silence_timeout_seconds: int = Field(default=60, ge=15, le=180)
     end_pause_ms: int = Field(default=800, ge=400, le=1800)
+
+    @field_validator("stt_keyterms")
+    @classmethod
+    def recognition_terms(cls, value):
+        from app.pipeline.recognition_options import validate_keyterms
+        return validate_keyterms(value)
 
     @field_validator("transfer_number")
     @classmethod

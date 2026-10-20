@@ -25,7 +25,7 @@ export const sessionSchema = z.object({
 export const connectionSchema = z.object({
   ...base,
   name: z.string(),
-  provider: z.enum(["deepgram", "groq", "openai", "twilio"]),
+  provider: z.enum(["deepgram", "groq", "openai", "twilio", "plivo"]),
   revision: z.number(),
   active: z.boolean(),
   test_status: z.string(),
@@ -39,6 +39,7 @@ export const configSchema = z.object({
   instructions: z.string(),
   tone: z.string(),
   stt_engine: z.enum(["deepgram", "groq"]),
+  stt_keyterms: z.array(z.string()).max(25).default([]),
   stt_connection_id: z.string().nullable(),
   llm_connection_id: z.string().nullable(),
   llm_model: z.string(),

@@ -32,6 +32,7 @@ def session_class():
                 db.commit()
             self.greeting = self.interpolate(self.config["greeting"])
             self.stt_engine = self.config["stt_engine"]
+            self.stt_keyterms = self.config.get("stt_keyterms", [])
             self.tts_engine = self.config["tts_engine"]
             self.voice_id = self.config["voice_id"]
             self.llm_model = self.config["llm_model"]

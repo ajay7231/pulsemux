@@ -50,8 +50,8 @@ export function NumbersPage({
         </div>
       ) : (
         <Empty title="No phone numbers to display">
-          Assign a Twilio number you own, then route its incoming calls to a
-          published agent.
+          Assign a Twilio or Plivo number you own, then route its incoming calls
+          to a published agent.
         </Empty>
       )}
     </section>
